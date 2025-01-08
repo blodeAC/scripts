@@ -226,6 +226,11 @@ for i, bar in ipairs(bars) do
     end
   end)
 
+  if bar.init then
+    bar:init()
+    bar.init=nil
+  end
+  
   -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
   huds[i].OnRender.Add(function()
     if ImGui.BeginChild(bar.name .. "##" .. i, Vector2.new(0, 0), false, huds[i].WindowSettings) then
@@ -241,10 +246,6 @@ for i, bar in ipairs(bars) do
         ImGui.PushStyleVar(stylevar, style)
       end
 
-      if bar.init then
-        bar:init()
-        bar.init=nil
-      end
       if bar.type == "progress" then
         ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, bar.color)
 
