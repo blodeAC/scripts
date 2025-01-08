@@ -17,8 +17,8 @@ local config = {
   -- Color of the corpse marker (0xAARRBBGG format, red by default)
   shapeColor0xAARRBBGG = 0xFFFF0000,
 
-  -- Scale of the corpse marker (0 to 1)
-  shapeScale0to1 = 1.0,
+  -- Scale of the corpse marker (0.01 to 1)
+  shapeScale0_01to1 = 1.0,
 
   -- Vertical offset of the corpse marker
   shapeZOffset = 0,
