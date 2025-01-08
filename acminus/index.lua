@@ -474,7 +474,7 @@ end
 
 
 ----------------------------------------
---- init (broken?)
+--- init
 ----------------------------------------
 
 if game.State == ClientState.In_Game then
