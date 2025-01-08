@@ -48,7 +48,7 @@ local function init()
     shapes[corpseId].SetShape(config.markerShape)
     shapes[corpseId].Anchor(coords.NS, coords.EW, coords.Z + config.shapeZOffset)
     if config.shapeOrientToPlayer then shapes[corpseId].OrientToPlayer(config.shapeVerticalTilt) end
-    shapes[corpseId].Scale(config.shapeScale0to1)
+    shapes[corpseId].Scale(config.shapeScale0_01to1)
     shapes[corpseId].Color = config.shapeColor0xAARRBBGG
     shapes[corpseId].Visible = true
     distances[corpseId] = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(corpseId))
