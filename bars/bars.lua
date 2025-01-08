@@ -37,8 +37,10 @@ local sortbag=function(bar,inscription,containerHolder,func)
   end
 end
 local function stagger(count)
-  local staggered=genericActionOpts
-  staggered.TimeoutMilliseconds = staggered.TimeoutMilliseconds*count
+  local staggered=ActionOptions.new()
+  staggered.TimeoutMilliseconds = genericActionOpts.TimeoutMilliseconds*count
+  ---@diagnostic disable-next-line
+  staggered.MaxRetryCount = 0
   return staggered
 end
 
@@ -309,6 +311,10 @@ bars = {
       bar.init=nil 
     end,
     func = function(bar)
+      if not game.World.OpenContainer or not game.World.OpenContainer.Container or not game.World.OpenContainer.Container.Name=="Avaricious Golem" then
+        bar.hud.Visible = false
+        return
+      end
       sortbag(bar,"peas",game.World.OpenContainer.Container,function()
         local count=1
         for i,item in ipairs(game.Character.Inventory) do
