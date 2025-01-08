@@ -15,9 +15,9 @@ local genericActionCallback=function(e)
 end
 
 -- FUNCTIONS USED BY BARS
-local sortbag=function(bar,inscription,func)
+local sortbag=function(bar,inscription,containerHolder,func)
   if bar.id==nil then
-    for _,bag in ipairs(game.Character.Containers) do
+    for _,bag in ipairs(containerHolder.Containers) do
       game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
         if bag.Id==e.Data.ObjectId then
           if bag.Value(StringId.Inscription)==inscription then
@@ -156,7 +156,7 @@ bars = {
     text = function(bar) return "Ust" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
-      sortbag(bar,"salvageme", function()
+      sortbag(bar,"salvageme", game.Character, function()
         if not game.Character.GetFirstInventory("Ust") then
           print("No UST!")
           return
@@ -191,7 +191,7 @@ bars = {
     text = function(bar) return "Trophy" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
-      sortbag(bar,"trophies",function()
+      sortbag(bar,"trophies",game.Character,function()
         for i,item in ipairs(game.Character.Inventory) do
           if item.HasAppraisalData==false and item.ObjectClass==ObjectClass.Misc then
             game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
@@ -217,7 +217,7 @@ bars = {
     text = function(bar) return "Salvage" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
-      sortbag(bar,"salvage",function()
+      sortbag(bar,"salvage",game.Character,function()
         for i,item in ipairs(game.Character.Inventory) do
           local salvage=(item.ObjectClass==ObjectClass.Salvage)
           if salvage and item.ContainerId~=bar.id then
@@ -231,7 +231,7 @@ bars = {
     text = function(bar) return "Gem" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
-      sortbag(bar,"gems",function()
+      sortbag(bar,"gems",game.Character,function()
         for i,item in ipairs(game.Character.Inventory) do
           local gem=(item.ObjectClass==ObjectClass.Gem)
           if gem and item.ContainerId~=bar.id then
@@ -245,7 +245,7 @@ bars = {
   text = function(bar) return "C" end,
   init = function(bar) bar:func() bar.init=nil end,
   func = function(bar)
-    sortbag(bar,"comps", function()
+    sortbag(bar,"comps",game.Character, function()
       for i,item in ipairs(game.Character.Inventory) do
         local comp=(item.ObjectClass==ObjectClass.SpellComponent) and not string.find(item.Name,"Pea")
         if comp and item.ContainerId~=bar.id then
@@ -259,7 +259,7 @@ bars = {
     text = function(bar) return "V" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
-      sortbag(bar,"vendor",function()
+      sortbag(bar,"vendor",game.Character,function()
         for i,item in ipairs(game.Character.Inventory) do
           local trash=(string.find(item.Name,"Mana Stone") or string.find(item.Name,"Scroll") or string.find(item.Name,"Lockpick")) and item.Burden<=50 and item.Value(IntId.Value)>=2000
           if trash and item.ContainerId~=bar.id then
@@ -275,10 +275,14 @@ bars = {
       game.Actions.InvokeChat("/vt setattackbar 0.51")
     end
   },
-  { name = "bankButton", type = "button", label = "BB",
+  { name = "bank_peas", type = "button", label = "BB",
     text = function(bar) return "Bank Button" end,
     init = function(bar)
-      bar.hud.Visible = false
+      if game.World.OpenContainer and game.World.OpenContainer.Name=="Avaricious Golem" then
+        bar.hud.Visible = true
+      else
+        bar.hud.Visible = false
+      end
       game.Messages.Incoming.Item_OnViewContents.Add(function(e)
         local container=game.World.Get(e.Data.ObjectId)
         if container and container.Name=="Avaricious Golem" then
@@ -294,7 +298,14 @@ bars = {
       bar.init=nil 
     end,
     func = function(bar)
-      print("haha woo")
+      sortbag(bar,"peas",game.World.OpenContainer,function()
+        for i,item in ipairs(game.Character.Inventory) do
+          local pea=string.find(item.Name,"Pea")
+          if pea and item.ContainerId~=bar.id then
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+          end
+        end
+      end)
     end
   }
 }
