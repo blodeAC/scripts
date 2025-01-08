@@ -6,7 +6,6 @@ local function init()
   local _imgui = require("imgui")
   local ImGui = _imgui.ImGui
   local views = require("utilitybelt.views")
-
   
   local settingsFile = "hud_settings.json"
   local config = require("config.lua")
@@ -474,7 +473,7 @@ end
 
 
 ----------------------------------------
---- init
+--- init 
 ----------------------------------------
 
 if game.State == ClientState.In_Game then

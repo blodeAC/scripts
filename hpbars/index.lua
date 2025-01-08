@@ -385,7 +385,7 @@ local init = function()
       ---@diagnostic disable
       local coords=nil
       if game.World.Exists(wobject.id) then coords=acclient.Movement.GetPhysicsCoordinates(wobject.id) end
-      if not coords or acclient.Coordinates.Me.DistanceTo(coords)>maxDistanceForVisibility then
+      if coords and acclient.Coordinates.Me.DistanceTo(coords)>maxDistanceForVisibility then
         wobject.hpbar.ScaleX=0.01
         wobject.redbar.ScaleX=0.01
       else
