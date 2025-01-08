@@ -60,9 +60,7 @@ bars = {
       value= function() return vitals[VitalId.Mana].Current end,
       text = function() return "  "..vitals[VitalId.Mana].Current .." / " .. vitals[VitalId.Mana].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Mana].Current)/(vitals[VitalId.Mana].Max)*100) ..")" end
   },
-
-  --[[
-  { name = "Distance",fontScale = 2, 
+  { name = "Distance",fontScale = 1.5, 
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
     minDistance = 35,
     maxDistance = 60,
@@ -77,7 +75,7 @@ bars = {
 
   { name = "hpIncoming",
     fontScale = 2,
-    text = function() return " " end,
+    text = function(bar) return " " end,
     fontColorPositive_BBGGRRstring = "00FF00",
     fontColorNegative_BBGGRRstring = "0000FF",
     fadeDuration = 2, -- How long the text stays on screen
@@ -149,9 +147,9 @@ bars = {
     end
   },
 
---[[
   { name = "bag_salvageme", type = "button", icon=9914,  label = "UST",
-    text = function() return "Ust" end,
+    text = function(bar) return "Ust" end,
+    init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"salvageme", function()
         if not game.Character.GetFirstInventory("Ust") then
@@ -168,16 +166,17 @@ bars = {
                 game.Actions.SalvageAdd(itemId,genericActionOpts,genericActionCallback)
               end
             end
+            sleep(100) --bad
             game.Actions.InvokeChat("/ub mexec ustsalvage[]")
           end)
         end
       end)
     end
   },
---]]
-  
+
   { name = "sort_trophybag", type = "button", icon=0x060011F7, label = "\nT ", 
-    text = function() return "Trophy" end,
+    text = function(bar) return "Trophy" end,
+    init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"trophies",function()
         for _,item in ipairs(game.Character.Inventory) do
@@ -201,9 +200,9 @@ bars = {
       end)
     end
   },
---[[
   { name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "S",
-    text = function() return "Salvage" end,
+    text = function(bar) return "Salvage" end,
+    init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"salvage",function()
         for i,item in ipairs(game.Character.Inventory) do
@@ -216,7 +215,8 @@ bars = {
     end
   },
   { name = "sort_gembag", type = "button", icon=0x060011F7, label = "G",
-    text = function() return "Gem" end,
+    text = function(bar) return "Gem" end,
+    init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"gems",function()
         for i,item in ipairs(game.Character.Inventory) do
@@ -228,7 +228,34 @@ bars = {
       end)
     end
   },
-
+  { name = "sort_compbag", type = "button", icon=0x060011F7, label = "\nC ",
+  text = function(bar) return "C" end,
+  init = function(bar) bar:func() bar.init=nil end,
+  func = function(bar)
+    sortbag(bar,"comps", function()
+      for i,item in ipairs(game.Character.Inventory) do
+        local comp=(item.ObjectClass==ObjectClass.SpellComponent) and not string.find(item.Name,"Pea")
+        if comp and item.ContainerId~=bar.id then
+          game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+        end
+      end
+    end)
+  end
+  },
+  { name = "sort_vendorbag", type = "button", icon=0x060011F7, label = "\nV ",
+    text = function(bar) return "V" end,
+    init = function(bar) bar:func() bar.init=nil end,
+    func = function(bar)
+      sortbag(bar,"vendor",function()
+        for i,item in ipairs(game.Character.Inventory) do
+          local trash=(string.find(item.Name,"Mana Stone") or string.find(item.Name,"Scroll") or string.find(item.Name,"Lockpick")) and item.Burden<=50 and item.Value(IntId.Value)>=2000
+          if trash and item.ContainerId~=bar.id then
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+          end
+        end
+      end)
+    end
+  },
 
   { name = "attackpower", type = "button",
     text = function() return "AP=0.51" end,
