@@ -36,9 +36,9 @@ local sortbag=function(bar,inscription,containerHolder,func)
     func(bar)
   end
 end
-local function stagger(i)
+local function stagger(count)
   local staggered=genericActionOpts
-  staggered.TimeoutMilliseconds = staggered.TimeoutMilliseconds*i
+  staggered.TimeoutMilliseconds = staggered.TimeoutMilliseconds*count
   return staggered
 end
 
@@ -192,12 +192,14 @@ bars = {
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"trophies",game.Character,function()
+        local count=1
         for i,item in ipairs(game.Character.Inventory) do
           if item.HasAppraisalData==false and item.ObjectClass==ObjectClass.Misc then
             game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
               if item.Id==e.Data.ObjectId then
                 if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
-                  game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+                  game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+                  count=count+1
                 end
                 ---@diagnostic disable-next-line
                 return true
@@ -206,7 +208,8 @@ bars = {
             item.Appraise()
           else
             if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
-              game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+              game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+              count=count+1
             end
           end
         end
@@ -218,10 +221,12 @@ bars = {
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"salvage",game.Character,function()
+        local count=1
         for i,item in ipairs(game.Character.Inventory) do
           local salvage=(item.ObjectClass==ObjectClass.Salvage)
           if salvage and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+            count=count+1
           end
         end
       end)
@@ -232,10 +237,12 @@ bars = {
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"gems",game.Character,function()
+        local count=1
         for i,item in ipairs(game.Character.Inventory) do
           local gem=(item.ObjectClass==ObjectClass.Gem)
           if gem and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+            count=count+1
           end
         end
       end)
@@ -246,10 +253,12 @@ bars = {
   init = function(bar) bar:func() bar.init=nil end,
   func = function(bar)
     sortbag(bar,"comps",game.Character, function()
+      local count=1
       for i,item in ipairs(game.Character.Inventory) do
         local comp=(item.ObjectClass==ObjectClass.SpellComponent) and not string.find(item.Name,"Pea")
         if comp and item.ContainerId~=bar.id then
-          game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+          game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+          count=count+1
         end
       end
     end)
@@ -260,10 +269,12 @@ bars = {
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"vendor",game.Character,function()
+        local count=1
         for i,item in ipairs(game.Character.Inventory) do
           local trash=(string.find(item.Name,"Mana Stone") or string.find(item.Name,"Scroll") or string.find(item.Name,"Lockpick")) and item.Burden<=50 and item.Value(IntId.Value)>=2000
           if trash and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+            count=count+1
           end
         end
       end)
@@ -299,10 +310,12 @@ bars = {
     end,
     func = function(bar)
       sortbag(bar,"peas",game.World.OpenContainer.Container,function()
+        local count=1
         for i,item in ipairs(game.Character.Inventory) do
           local pea=string.find(item.Name,"Pea")
           if pea and item.ObjectClass==ObjectClass.SpellComponent and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+            count=count+1
           end
         end
       end)
