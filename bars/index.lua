@@ -225,7 +225,7 @@ for i, bar in ipairs(bars) do
       end
 
       if bar.init then
-        bar.init(bar)
+        bar:init()
       end
       if bar.type == "progress" then
         ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, bar.color)
