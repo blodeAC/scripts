@@ -16,7 +16,7 @@ end
 
 -- FUNCTIONS USED BY BARS
 local sortbag=function(bar,inscription,containerHolder,func)
-  if bar.id==nil then
+  if bar.id==nil or game.World.Exists(bar.id)==nil then
     for _,bag in ipairs(containerHolder.Containers) do
       game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
         if bag.Id==e.Data.ObjectId then
@@ -276,7 +276,7 @@ bars = {
     end
   },
   { name = "bank_peas", type = "button", label = "BB",
-    text = function(bar) return "Find Pea Bag" end,
+    text = function(bar) return bar.id and "Store Peas" or "Find Pea Bag" end,
     init = function(bar)
       if game.World.OpenContainer and game.World.OpenContainer.Container and game.World.OpenContainer.Container.Name=="Avaricious Golem" then
         bar.hud.Visible = true
