@@ -36,6 +36,11 @@ local sortbag=function(bar,inscription,func)
     func(bar)
   end
 end
+local function stagger(i)
+  local staggered=genericActionOpts
+  staggered.TimeoutMilliseconds = staggered.TimeoutMilliseconds*i
+  return staggered
+end
 
 -- BARS
 local bars = {}
@@ -147,7 +152,7 @@ bars = {
     end
   },
 
-  { name = "bag_salvageme", type = "button", icon=9914,  label = "UST",
+  { name = "bag_salvageme", type = "button", icon=9914,  label = "\nU ",
     text = function(bar) return "Ust" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -161,13 +166,21 @@ bars = {
               game.Actions.SalvageAdd(itemId,genericActionOpts,genericActionCallback)
             end
             
-            if bar.id then
-              for _,itemId in ipairs(game.World.Get(bar.id).AllItemIds) do
-                game.Actions.SalvageAdd(itemId,genericActionOpts,genericActionCallback)
+            for _,exBar in ipairs(bars) do
+              if exBar.name=="sort_salvagebag" and exBar.id then
+                for _,itemId in ipairs(game.World.Get(exBar.id).AllItemIds) do
+                  game.Actions.SalvageAdd(itemId,genericActionOpts,genericActionCallback)
+                end
+                break
               end
             end
-            sleep(100) --bad
-            game.Actions.InvokeChat("/ub mexec ustsalvage[]")
+            local opts=ActionOptions.new()
+            opts.SkipChecks = true
+            ---@diagnostic disable-next-line
+            opts.TimeoutMilliseconds = 100
+            ---@diagnostic disable-next-line
+            opts.MaxRetryCount = 0
+            game.Actions.Salvage(opts,genericActionCallback)
           end)
         end
       end)
@@ -179,12 +192,12 @@ bars = {
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"trophies",function()
-        for _,item in ipairs(game.Character.Inventory) do
+        for i,item in ipairs(game.Character.Inventory) do
           if item.HasAppraisalData==false and item.ObjectClass==ObjectClass.Misc then
             game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
               if item.Id==e.Data.ObjectId then
                 if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
-                  game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+                  game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
                 end
                 ---@diagnostic disable-next-line
                 return true
@@ -193,14 +206,14 @@ bars = {
             item.Appraise()
           else
             if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
-              game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+              game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
             end
           end
         end
       end)
     end
   },
-  { name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "S",
+  {name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "\nS ",
     text = function(bar) return "Salvage" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -208,13 +221,13 @@ bars = {
         for i,item in ipairs(game.Character.Inventory) do
           local salvage=(item.ObjectClass==ObjectClass.Salvage)
           if salvage and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
           end
         end
       end)
     end
   },
-  { name = "sort_gembag", type = "button", icon=0x060011F7, label = "G",
+  { name = "sort_gembag", type = "button", icon=0x060011F7, label = "\nG ",
     text = function(bar) return "Gem" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -222,7 +235,7 @@ bars = {
         for i,item in ipairs(game.Character.Inventory) do
           local gem=(item.ObjectClass==ObjectClass.Gem)
           if gem and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
           end
         end
       end)
@@ -236,7 +249,7 @@ bars = {
       for i,item in ipairs(game.Character.Inventory) do
         local comp=(item.ObjectClass==ObjectClass.SpellComponent) and not string.find(item.Name,"Pea")
         if comp and item.ContainerId~=bar.id then
-          game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+          game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
         end
       end
     end)
@@ -250,19 +263,17 @@ bars = {
         for i,item in ipairs(game.Character.Inventory) do
           local trash=(string.find(item.Name,"Mana Stone") or string.find(item.Name,"Scroll") or string.find(item.Name,"Lockpick")) and item.Burden<=50 and item.Value(IntId.Value)>=2000
           if trash and item.ContainerId~=bar.id then
-            game.Actions.ObjectMove(item.Id,bar.id,0,false,genericActionOpts,genericActionCallback)
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
           end
         end
       end)
     end
   },
-
   { name = "attackpower", type = "button",
     text = function() return "AP=0.51" end,
     func = function()
       game.Actions.InvokeChat("/vt setattackbar 0.51")
     end
   }
---]]
 }
 return bars
