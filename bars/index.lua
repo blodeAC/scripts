@@ -167,9 +167,6 @@ local function imguiAligner(bar, text, start, size)
 
   -- Set the cursor to the calculated position
   ImGui.SetCursorScreenPos(Vector2.new(textX, textY))
-  
-  -- Optionally: Render the text
-  -- ImGui.Text(text)
 end
 
 local huds = {} -- Initialize the huds table
@@ -240,7 +237,7 @@ for i, bar in ipairs(bars) do
         ImGui.ProgressBar(progressFraction, progressBarSize, "") -- Render bar without default text
 
         -- Calculate and render custom text based on alignment setting
-        local text = bar.text and bar.text() or string.format("%.0f%%%%", progressFraction * 100)
+        local text = bar.text and bar:text() or string.format("%.0f%%%%", progressFraction * 100)
 
         imguiAligner(bar, text, progressBarStartPos, progressBarSize)
         ImGui.Text(text)
@@ -253,14 +250,14 @@ for i, bar in ipairs(bars) do
           if bar.icon then
             DrawIcon(bar)
           end
-        elseif ImGui.Button(bar.text and bar.text() or bar.label,ImGui.GetContentRegionAvail()) then
+        elseif ImGui.Button(bar.text and bar:text() or bar.label,ImGui.GetContentRegionAvail()) then
           bar:func()
         end
 
 
       elseif bar.type == "text" then
         ---@diagnostic disable-next-line
-        local text = bar.text(bar)
+        local text = bar:text()
         imguiAligner(bar, text)
         ImGui.Text(text)
 
