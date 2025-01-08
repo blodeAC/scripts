@@ -3,7 +3,6 @@ ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
-
 local bars = require("bars")
 
 local borderColor = 0xFF000000 -- Black color for borders
@@ -125,7 +124,7 @@ local function saveSettings()
         position = { X = barPositions[i].X, Y = barPositions[i].Y },
         size = { X = barSizes[i].X, Y = barSizes[i].Y }
       }
-      settings[game.ServerName][game.Character.Weenie.Name][bar.name] = bar.hide or false
+      settings[game.ServerName][game.Character.Weenie.Name][bar.name].hide = bar.hide or false
     end
   end
 
@@ -181,18 +180,20 @@ for i, bar in ipairs(bars) do
   else
     huds[i] = views.Huds.CreateHud(bar.name)
   end
-
+  
+  bar.hud=huds[i]
   huds[i].OnHide.Add(function()
     bar.hide = true
+    huds[i].Visible = false
     saveSettings()
   end)
   huds[i].OnShow.Add(function()
     bar.hide = false
+    huds[i].Visible = true
     saveSettings()
   end)
 
   -- Set HUD properties.
-  print(bar.name .. " : " .. tostring(bar.hide))
   huds[i].Visible = not bar.hide
   huds[i].ShowInBar = true
 
@@ -227,83 +228,82 @@ for i, bar in ipairs(bars) do
 
   -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
   huds[i].OnRender.Add(function()
-    if bar.hide == false then
-      if ImGui.BeginChild(bar.name .. "##" .. i, Vector2.new(0, 0), false, huds[i].WindowSettings) then
-        local fontScale = bar.fontScale or 1
-        ImGui.SetWindowFontScale(fontScale)
+    if ImGui.BeginChild(bar.name .. "##" .. i, Vector2.new(0, 0), false, huds[i].WindowSettings) then
+      local fontScale = bar.fontScale or 1
+      ImGui.SetWindowFontScale(fontScale)
 
-        -- Apply border styles conditionally based on the setting at the top of the script.
-        if borderSize > 0 then
-          ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FrameBorderSize, borderSize)
-          ImGui.PushStyleColor(_imgui.ImGuiCol.Border, borderColor)
-        end
-        for stylevar, style in ipairs(bar.stylevar or {}) do
-          ImGui.PushStyleVar(stylevar, style)
-        end
-
-        if bar.init then
-          bar:init()
-        end
-        if bar.type == "progress" then
-          ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, bar.color)
-
-          -- Render the progress bar inside the HUD without default text.
-          local progressBarSize = Vector2.new(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y)
-          local progressFraction = bar.value() / bar.max()
-          local progressBarStartPos = ImGui.GetCursorScreenPos()   -- Save the starting position of the progress bar
-          ImGui.ProgressBar(progressFraction, progressBarSize, "") -- Render bar without default text
-
-          -- Calculate and render custom text based on alignment setting
-          local text = bar.text and bar:text() or string.format("%.0f%%%%", progressFraction * 100)
-
-          imguiAligner(bar, text, progressBarStartPos, progressBarSize)
-          ImGui.Text(text)
-
-          ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
-        elseif bar.type == "button" then
-          if bar.id then
-            if bar.icon then
-              DrawIcon(bar)
-            end
-          elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
-            bar:func()
-          end
-        elseif bar.type == "text" then
-          ---@diagnostic disable-next-line
-          local text = bar:text()
-          imguiAligner(bar, text)
-          ImGui.Text(text)
-        elseif bar.render then
-          bar.render(bar)
-        end
-
-        for stylevar, style in ipairs(bar.stylevar or {}) do
-          ImGui.PopStyleVar()
-        end
-        if borderSize > 0 then
-          ImGui.PopStyleVar()
-          ImGui.PopStyleColor()
-        end
-
-        -- Save position/size when Ctrl is pressed.
-        if ImGui.GetIO().KeyCtrl then
-          local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize())
-          local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize())
-
-          if currentPos.X ~= (barPositions[i] and barPositions[i].X or -1) or
-              currentPos.Y ~= (barPositions[i] and barPositions[i].Y or -1) or
-              currentContentSize.X ~= (barSizes[i] and barSizes[i].X or -1) or
-              currentContentSize.Y ~= (barSizes[i] and barSizes[i].Y or -1) then
-            barPositions[i] = currentPos
-            barSizes[i] = Vector2.new(currentContentSize.X, currentContentSize.Y)
-
-            saveSettings()
-          end
-        end
+      -- Apply border styles conditionally based on the setting at the top of the script.
+      if borderSize > 0 then
+        ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FrameBorderSize, borderSize)
+        ImGui.PushStyleColor(_imgui.ImGuiCol.Border, borderColor)
+      end
+      for stylevar, style in ipairs(bar.stylevar or {}) do
+        ImGui.PushStyleVar(stylevar, style)
       end
 
-      ImGui.EndChild()
+      if bar.init then
+        bar:init()
+        bar.init=nil
+      end
+      if bar.type == "progress" then
+        ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, bar.color)
+
+        -- Render the progress bar inside the HUD without default text.
+        local progressBarSize = Vector2.new(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y)
+        local progressFraction = bar.value() / bar.max()
+        local progressBarStartPos = ImGui.GetCursorScreenPos()   -- Save the starting position of the progress bar
+        ImGui.ProgressBar(progressFraction, progressBarSize, "") -- Render bar without default text
+
+        -- Calculate and render custom text based on alignment setting
+        local text = bar.text and bar:text() or string.format("%.0f%%%%", progressFraction * 100)
+
+        imguiAligner(bar, text, progressBarStartPos, progressBarSize)
+        ImGui.Text(text)
+
+        ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
+      elseif bar.type == "button" then
+        if bar.id then
+          if bar.icon then
+            DrawIcon(bar)
+          end
+        elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
+          bar:func()
+        end
+      elseif bar.type == "text" then
+        ---@diagnostic disable-next-line
+        local text = bar:text()
+        imguiAligner(bar, text)
+        ImGui.Text(text)
+      elseif bar.render then
+        bar.render(bar)
+      end
+
+      for stylevar, style in ipairs(bar.stylevar or {}) do
+        ImGui.PopStyleVar()
+      end
+      if borderSize > 0 then
+        ImGui.PopStyleVar()
+        ImGui.PopStyleColor()
+      end
+
+      -- Save position/size when Ctrl is pressed.
+      if ImGui.GetIO().KeyCtrl then
+        local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize())
+        local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize())
+
+        if currentPos.X ~= (barPositions[i] and barPositions[i].X or -1) or
+            currentPos.Y ~= (barPositions[i] and barPositions[i].Y or -1) or
+            currentContentSize.X ~= (barSizes[i] and barSizes[i].X or -1) or
+            currentContentSize.Y ~= (barSizes[i] and barSizes[i].Y or -1) then
+          barPositions[i] = currentPos
+          barSizes[i] = Vector2.new(currentContentSize.X, currentContentSize.Y)
+
+          saveSettings()
+        end
+      end
     end
+
+    ImGui.EndChild()
     ImGui.PopStyleVar(5) --WindowMinSize,WindowPadding,FramePadding,ItemSpacing,ItemInnerSpacing
   end)
 end

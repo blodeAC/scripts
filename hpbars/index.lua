@@ -386,10 +386,10 @@ local init = function()
       local coords=nil
       if game.World.Exists(wobject.id) then coords=acclient.Movement.GetPhysicsCoordinates(wobject.id) end
       if coords and acclient.Coordinates.Me.DistanceTo(coords)>maxDistanceForVisibility then
-        pcall(function()
+      --[[  pcall(function()
           wobject.hpbar.ScaleX=0.01
           wobject.redbar.ScaleX=0.01
-        end)
+        end)--]]
       else
         wobject:anchorHpBar()
       end

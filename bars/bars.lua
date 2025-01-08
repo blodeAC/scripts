@@ -275,19 +275,20 @@ bars = {
       game.Actions.InvokeChat("/vt setattackbar 0.51")
     end
   },
-  { name = "bankButton", type = "button", hide=true, label = "BB",
+  { name = "bankButton", type = "button", label = "BB",
     text = function(bar) return "Bank Button" end,
     init = function(bar)
+      bar.hud.Visible = false
       game.Messages.Incoming.Item_OnViewContents.Add(function(e)
         local container=game.World.Get(e.Data.ObjectId)
         if container and container.Name=="Avaricious Golem" then
-          bar.disabled = false
+          bar.hud.Visible = true
         end
       end)
       game.Messages.Incoming.Item_StopViewingObjectContents.Add(function(e)
         local container=game.World.Get(e.Data.ObjectId)
         if  container and container.Name=="Avaricious Golem" then
-          bar.disabled = true
+          bar.hud.Visible = false
         end
       end)
       bar.init=nil 
