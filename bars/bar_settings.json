@@ -1,0 +1,106 @@
+{
+  "Daralet": {
+    "Blode": {
+      "Health": {
+        "position": {
+          "X": 827,
+          "Y": 780
+        },
+        "size": {
+          "X": 257,
+          "Y": 21
+        }
+      },
+      "Stamina": {
+        "position": {
+          "X": 828,
+          "Y": 800
+        },
+        "size": {
+          "X": 139,
+          "Y": 22
+        }
+      },
+      "Mana": {
+        "position": {
+          "X": 968,
+          "Y": 800
+        },
+        "size": {
+          "X": 114,
+          "Y": 20
+        }
+      },
+      "Distance": {
+        "position": {
+          "X": 1008,
+          "Y": 730
+        },
+        "size": {
+          "X": 61,
+          "Y": 175
+        }
+      },
+      "sort_trophybag": {
+        "position": {
+          "X": 1891,
+          "Y": 271
+        },
+        "size": {
+          "X": 30,
+          "Y": 29
+        }
+      },
+      "sort_salvagebag": {
+        "position": {
+          "X": 1893,
+          "Y": 238
+        },
+        "size": {
+          "X": 27,
+          "Y": 26
+        }
+      },
+      "sort_gembag": {
+        "position": {
+          "X": 1894,
+          "Y": 306
+        },
+        "size": {
+          "X": 24,
+          "Y": 32
+        }
+      },
+      "bag_salvageme": {
+        "position": {
+          "X": 1894,
+          "Y": 347
+        },
+        "size": {
+          "X": 26,
+          "Y": 27
+        }
+      },
+      "attackpower": {
+        "position": {
+          "X": 1256,
+          "Y": 759
+        },
+        "size": {
+          "X": 200,
+          "Y": 30
+        }
+      },
+      "hpIncoming": {
+        "position": {
+          "X": 1079,
+          "Y": 393
+        },
+        "size": {
+          "X": 77,
+          "Y": 429
+        }
+      }
+    }
+  }
+}
