@@ -276,9 +276,9 @@ bars = {
     end
   },
   { name = "bank_peas", type = "button", label = "BB",
-    text = function(bar) return "Bank Button" end,
+    text = function(bar) return "Find Pea Bag" end,
     init = function(bar)
-      if game.World.OpenContainer and game.World.OpenContainer.Name=="Avaricious Golem" then
+      if game.World.OpenContainer and game.World.OpenContainer.Container and game.World.OpenContainer.Container.Name=="Avaricious Golem" then
         bar.hud.Visible = true
       else
         bar.hud.Visible = false
@@ -298,10 +298,10 @@ bars = {
       bar.init=nil 
     end,
     func = function(bar)
-      sortbag(bar,"peas",game.World.OpenContainer,function()
+      sortbag(bar,"peas",game.World.OpenContainer.Container,function()
         for i,item in ipairs(game.Character.Inventory) do
           local pea=string.find(item.Name,"Pea")
-          if pea and item.ContainerId~=bar.id then
+          if pea and item.ObjectClass==ObjectClass.SpellComponent and item.ContainerId~=bar.id then
             game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(i),genericActionCallback)
           end
         end

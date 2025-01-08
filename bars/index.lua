@@ -262,10 +262,8 @@ for i, bar in ipairs(bars) do
 
         ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
       elseif bar.type == "button" then
-        if bar.id then
-          if bar.icon then
-            DrawIcon(bar)
-          end
+        if bar.id and bar.icon then
+          DrawIcon(bar)
         elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
           bar:func()
         end
