@@ -125,26 +125,29 @@ end
 local bars = {}
 
 bars = {  
-  { name = "Health",  color = 0xAA0000AA, windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground, 
+  { name = "Health",  color = 0xAA0000AA, icon = 0x060069E9,
+      windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground, 
       textAlignment="center", type = "progress",
       max  = function() return vitals[VitalId.Health].Max end,
       value= function() return vitals[VitalId.Health].Current end,
       text = function() return "  "..vitals[VitalId.Health].Current .." / " .. vitals[VitalId.Health].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Health].Current)/(vitals[VitalId.Health].Max)*100) ..")" end
 
   }, -- add "fontScale = 1.5" property to scale font 1.5x to any bar (or any other size), as needed
-  { name = "Stamina", color = 0xAA00AAAA, windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
+  { name = "Stamina", color = 0xAA00AAAA, icon = 0x060069E8,
+      windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
       textAlignment="center", type = "progress",
       max  = function() return vitals[VitalId.Stamina].Max end,
       value= function() return vitals[VitalId.Stamina].Current end,
       text = function() return "  "..vitals[VitalId.Stamina].Current .." / " .. vitals[VitalId.Stamina].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Stamina].Current)/(vitals[VitalId.Stamina].Max)*100) ..")" end
   },
-  { name = "Mana",    color = 0xAAAA0000, windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,  
+  { name = "Mana",    color = 0xAAAA0000, icon = 0x060069EA,
+      windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,  
       textAlignment="center", type = "progress",
       max  = function() return vitals[VitalId.Mana].Max end,
       value= function() return vitals[VitalId.Mana].Current end,
       text = function() return "  "..vitals[VitalId.Mana].Current .." / " .. vitals[VitalId.Mana].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Mana].Current)/(vitals[VitalId.Mana].Max)*100) ..")" end
   },
-  { name = "Distance",fontScale = 1.5, 
+  { name = "Distance",fontScale = 1.5, icon = 0x060064E5,
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
     minDistance = 35,
     maxDistance = 60,
@@ -155,7 +158,7 @@ bars = {
       return dist>bar.minDistance and dist<bar.maxDistance and string.format("%.1f%",dist) or ""
     end
   },
-  { name = "bag_salvageme", type = "button", icon=9914,  label = "\nU ",
+  { name = "bag_salvageme", type = "button", icon = 9914,  label = "\nU ",
     text = function(bar) return "Ust" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -283,14 +286,14 @@ bars = {
       end)
     end
   },
-  { name = "attackpower", type = "button",
+  { name = "attackpower", type = "button", icon=0x06006084,
     text = function() return "AP=0.51" end,
     func = function()
       game.Actions.InvokeChat("/vt setattackbar 0.51")
     end
   },
   { 
-    name = "bank_peas", type = "button", label = "BB",
+    name = "bank_peas", type = "button", icon=0x06006727, label = "BB",
     text = function(bar) return bar.id and "Store Peas" or "Find Pea Bag" end,
     init = function(bar)
       if game.World.OpenContainer and game.World.OpenContainer.Container and game.World.OpenContainer.Container.Name=="Avaricious Golem" then
@@ -330,6 +333,7 @@ bars = {
     end
   },
   { name = "render_damageDealt",
+    icon = 0x060069F6,
     fontScale_min = 2,
     fontScale_max = 3,
     fontScale_crit = 4,
@@ -367,7 +371,6 @@ bars = {
           local m = r.Match(e.Data.Text)
           if (m.Success) then
             if m.Groups["crit"].Success then
-              print("you crit")
               crit = true
             end
             if m.Groups["damage"].Success then
@@ -418,6 +421,7 @@ bars = {
     render = renderEvent
   },
   { name = "render_damageTaken",
+    icon = 0x06006AEE,
     fontScale_min = 2,
     fontScale_max = 3,
     text = function(bar) return " " end,

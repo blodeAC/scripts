@@ -355,7 +355,7 @@ local function init()
   --- ImGui display and xp coroutine
   ----------------------------------------
 
-  hud = views.Huds.CreateHud("corpses")
+  hud = views.Huds.CreateHud("corpses",0x060030A8)
   hud.WindowSettings = _imgui.ImGuiWindowFlags.NoTitleBar
   hud.Visible = true
 
