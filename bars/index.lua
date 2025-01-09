@@ -27,7 +27,9 @@ end
 
 function DrawIcon(bar)
   local size = bar.size
-  if not bar.size then size = Vector2.new(24, 24) end
+  if not bar.size then 
+    size = ImGui.GetContentRegionAvail()
+  end
   if ImGui.TextureButton(tostring(bar.id), GetOrCreateTexture(bar.icon), size) then
     bar:func()
   end
@@ -36,17 +38,14 @@ function DrawIcon(bar)
   local rectMin = ImGui.GetItemRectMin()
   local rectMax = ImGui.GetItemRectMax()
 
-  -- Draw a semi-transparent background
-  drawlist.AddRectFilled(rectMin, rectMax, 0x66000000)
-
-  local textSize = ImGui.CalcTextSize(bar.label)
+  local textSize = ImGui.CalcTextSize(bar.label or " ")
   local startText = Vector2.new(
     rectMin.X + (rectMax.X - rectMin.X - textSize.X) / 2,
     rectMin.Y + (rectMax.Y - rectMin.Y - textSize.Y) / 2
   )
 
   -- Draw text in white
-  drawlist.AddText(startText, 0xFFFFFFFF, bar.label)
+  drawlist.AddText(startText, 0xFFFFFFFF, bar.label or " ")
 end
 
 ----------------------------------------
@@ -149,7 +148,7 @@ local function imguiAligner(bar, text, start, size)
     textSize.X = textSize.X - ImGui.GetFontSize() / 2
   end
 
-
+  
   -- Calculate the X position to center the text, and ensure it doesn't overflow
   local textX
   if bar.textAlignment == "left" then

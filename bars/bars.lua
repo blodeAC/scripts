@@ -158,7 +158,7 @@ bars = {
       return dist>bar.minDistance and dist<bar.maxDistance and string.format("%.1f%",dist) or ""
     end
   },
-  { name = "bag_salvageme", type = "button", icon = 9914,  label = "\nU ",
+  { name = "bag_salvageme", type = "button", icon = 9914,
     text = function(bar) return "Ust" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -193,36 +193,36 @@ bars = {
     end
   },
 
-  { name = "sort_trophybag", type = "button", icon=0x060011F7, label = "\nT ", 
+  { name = "sort_trophybag", type = "button", icon=0x060011F7, label = "T    \n\n", 
     text = function(bar) return "Trophy" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
       sortbag(bar,"trophies",game.Character,function()
         local count=1
+        local function stash(item)
+          if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
+            game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
+            count=count+1
+          end
+        end
         for i,item in ipairs(game.Character.Inventory) do
           if item.HasAppraisalData==false and item.ObjectClass==ObjectClass.Misc then
             game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
               if item.Id==e.Data.ObjectId then
-                if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
-                  game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
-                  count=count+1
-                end
+                stash(item)
                 ---@diagnostic disable-next-line
                 return true
               end
             end)
             item.Appraise()
           else
-            if item.ContainerId~=bar.id and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
-              game.Actions.ObjectMove(item.Id,bar.id,0,false,stagger(count),genericActionCallback)
-              count=count+1
-            end
+            stash(item)
           end
         end
       end)
     end
   },
-  {name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "\nS ",
+  {name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "S    \n\n",
     text = function(bar) return "Salvage" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -238,7 +238,7 @@ bars = {
       end)
     end
   },
-  { name = "sort_gembag", type = "button", icon=0x060011F7, label = "\nG ",
+  { name = "sort_gembag", type = "button", icon=0x060011F7, label = "G    \n\n",
     text = function(bar) return "Gem" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -254,7 +254,7 @@ bars = {
       end)
     end
   },
-  { name = "sort_compbag", type = "button", icon=0x060011F7, label = "\nC ",
+  { name = "sort_compbag", type = "button", icon=0x060011F7, label = "C    \n\n",
   text = function(bar) return "C" end,
   init = function(bar) bar:func() bar.init=nil end,
   func = function(bar)
@@ -270,7 +270,7 @@ bars = {
     end)
   end
   },
-  { name = "sort_vendorbag", type = "button", icon=0x060011F7, label = "\nV ",
+  { name = "sort_vendorbag", type = "button", icon=0x060011F7, label = "V    \n\n",
     text = function(bar) return "V" end,
     init = function(bar) bar:func() bar.init=nil end,
     func = function(bar)
@@ -293,7 +293,7 @@ bars = {
     end
   },
   { 
-    name = "bank_peas", type = "button", icon=0x06006727, label = "BB",
+    name = "bank_peas", type = "button", icon=0x06006727,
     text = function(bar) return bar.id and "Store Peas" or "Find Pea Bag" end,
     init = function(bar)
       if game.World.OpenContainer and game.World.OpenContainer.Container and game.World.OpenContainer.Container.Name=="Avaricious Golem" then
