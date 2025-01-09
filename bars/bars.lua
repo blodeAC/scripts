@@ -44,6 +44,83 @@ local function stagger(count)
   return staggered
 end
 
+local function renderEvent(bar)
+  local currentTime = os.clock()
+  local validEntries = {}  -- Temporary list for valid entries
+  local average = (bar.runningCount > 0) and (bar.runningSum / bar.runningCount) or 1 -- Avoid divide by zero
+  
+  -- Get the window's current size (content region)
+  local windowSize = ImGui.GetContentRegionAvail()
+  local lastEntry=nil
+  local minSpacingX=10
+  
+  -- Process and render each entry
+  for i, entry in ipairs(bar.entries) do
+    local elapsed = currentTime - entry.time
+    if elapsed <= bar.fadeDuration then
+      -- Calculate alpha for fade effect
+      local alpha = 1 - (elapsed / bar.fadeDuration)
+      local color = tonumber(string.format("%02X%s", math.floor(alpha * 255), entry.positive and bar.fontColorPositive_BBGGRRstring or bar.fontColorNegative_BBGGRRstring), 16)
+
+      -- Scale font based on value relative to the average
+      if not entry.scale then
+        entry.scale = string.sub(entry.text,-1)=="!" and entry.fontScale_crit or math.min(math.max((entry.value or average) / average, bar.fontScale_min), bar.fontScale_max)
+      end
+      ImGui.SetWindowFontScale(entry.scale)
+
+      -- Calculate the floating distance based on elapsed time and window size
+      local floatDistance = (elapsed / bar.fadeDuration) * windowSize.Y  -- Scale to the full window height
+
+      -- Start the y position from the bottom of the window and move up
+      entry.cursorPosY = windowSize.Y - floatDistance - ImGui.GetFontSize()
+
+      if entry.cursorPosX == nil then
+        -- Calculate horizontal position based on entry index
+        entry.textSize = ImGui.CalcTextSize(entry.text)
+        local baseX = (windowSize.X - entry.textSize.X) / 2 -- Center position
+        entry.cursorPosX = baseX
+        
+        if lastEntry then
+          local conflict=function()
+            return (lastEntry.cursorPosY+lastEntry.textSize.Y-entry.cursorPosY)>0 and (lastEntry.cursorPosX+lastEntry.textSize.X-entry.cursorPosX)>0
+          end
+          if conflict() then
+            entry.cursorPosX = baseX + lastEntry.textSize.X + minSpacingX
+            if entry.cursorPosX + entry.textSize.X > windowSize.X or conflict() then
+              entry.cursorPosX = lastEntry.cursorPosX - entry.textSize.X - minSpacingX
+            end
+          end
+        end
+      end
+
+      -- Set the cursor position using SetCursorPos, relative to the window
+      ImGui.SetCursorPos(Vector2.new(entry.cursorPosX, entry.cursorPosY))
+
+      -- Render the text at the calculated position
+      ImGui.PushStyleColor(_imgui.ImGuiCol.Text, color)
+      ImGui.Text(entry.text)
+      ImGui.PopStyleColor()
+
+      -- Reset font scaling after rendering
+      ImGui.SetWindowFontScale(1)
+
+      -- Store the valid entry for the next render cycle
+      table.insert(validEntries, entry)
+    else
+      -- Remove expired entry from running sum and count
+      if entry.value and bar.runningCount > 10 then
+        bar.runningSum = bar.runningSum - entry.value
+        bar.runningCount = bar.runningCount - 1
+      end
+    end
+    lastEntry=entry
+  end
+  
+  -- Replace old entries with the valid ones
+  bar.entries = validEntries
+end
+
+
 -- BARS
 local bars = {}
 
@@ -78,82 +155,6 @@ bars = {
       return dist>bar.minDistance and dist<bar.maxDistance and string.format("%.1f%",dist) or ""
     end
   },
---]]
-
-  { name = "hpIncoming",
-    fontScale = 2,
-    text = function(bar) return " " end,
-    fontColorPositive_BBGGRRstring = "00FF00",
-    fontColorNegative_BBGGRRstring = "0000FF",
-    fadeDuration = 2, -- How long the text stays on screen
-    floatSpeed = 1,   -- Speed of the floating text
-    entries = {},     -- Table to store stamina changes
-    
-    init = function(bar)
-      -- Set window properties
-      bar.windowSettings =
-          _imgui.ImGuiWindowFlags.NoInputs +
-          _imgui.ImGuiWindowFlags.NoBackground
-
-      -- Subscribe to stamina change events
-      game.Character.OnVitalChanged.Add(function(changedVital)
-        if changedVital.Type == VitalId.Health then
-          local delta = changedVital.Value - changedVital.OldValue
-          -- Add a new entry at the bottom of the bar
-          table.insert(bar.entries, {
-            text = tostring(delta),
-            positive = delta>0 and true or false,
-            time = os.clock(),
-            position = Vector2.new(100, 300) -- Initial position (adjust as needed)
-          })
-        end
-      end)
-      bar.init=nil
-    end,
-
-    render = function(bar)
-      local currentTime = os.clock()
-      local validEntries = {}  -- Temporary list for valid entries
-      
-      -- Get the window's current size (content region)
-      local windowSize = ImGui.GetContentRegionAvail()
-      
-      -- Process and render each entry
-      for _, entry in ipairs(bar.entries) do
-        local elapsed = currentTime - entry.time
-        if elapsed <= bar.fadeDuration then
-          -- Calculate alpha for fade effect
-          local alpha = 1 - (elapsed / bar.fadeDuration)
-          local color = tonumber(string.format("%02X%s", math.floor(alpha * 255), entry.positive and bar.fontColorPositive_BBGGRRstring or bar.fontColorNegative_BBGGRRstring), 16)
-      
-          -- Calculate the floating distance based on elapsed time and window size
-          -- This ensures the text moves the full height of the window
-          local floatDistance = (elapsed / bar.fadeDuration) * windowSize.Y  -- Scale to the full window height
-    
-          -- Center the text horizontally in the window
-          local cursorPosX = (windowSize.X - ImGui.CalcTextSize(entry.text).X) / 2
-    
-          -- Start the y position from the bottom of the window and move up
-          local cursorPosY = windowSize.Y - floatDistance - ImGui.GetFontSize()  -- Keep it above the bottom by font height
-    
-          -- Set the cursor position using SetCursorPos, relative to the window
-          ImGui.SetCursorPos(Vector2.new(cursorPosX, cursorPosY))
-      
-          -- Render the text at the calculated position
-          ImGui.PushStyleColor(_imgui.ImGuiCol.Text, color)
-          ImGui.Text(entry.text)
-          ImGui.PopStyleColor()
-      
-          -- Store the valid entry for the next render cycle
-          table.insert(validEntries, entry)
-        end
-      end
-    
-      -- Replace old entries with the valid ones
-      bar.entries = validEntries
-    end
-  },
-
   { name = "bag_salvageme", type = "button", icon=9914,  label = "\nU ",
     text = function(bar) return "Ust" end,
     init = function(bar) bar:func() bar.init=nil end,
@@ -288,7 +289,8 @@ bars = {
       game.Actions.InvokeChat("/vt setattackbar 0.51")
     end
   },
-  { name = "bank_peas", type = "button", label = "BB",
+  { 
+    name = "bank_peas", type = "button", label = "BB",
     text = function(bar) return bar.id and "Store Peas" or "Find Pea Bag" end,
     init = function(bar)
       if game.World.OpenContainer and game.World.OpenContainer.Container and game.World.OpenContainer.Container.Name=="Avaricious Golem" then
@@ -326,6 +328,131 @@ bars = {
         end
       end)
     end
+  },
+  { name = "render_damageDealt",
+    fontScale_min = 2,
+    fontScale_max = 3,
+    fontScale_crit = 4,
+    text = function(bar) return " " end,
+    fontColorPositive_BBGGRRstring = "FFFFFF",
+    fontColorNegative_BBGGRRstring = "0000FF",
+    fadeDuration = 2, -- How long the text stays on screen
+    floatSpeed = 1,   -- Speed of the floating text
+    entries = {},     -- Table to store damages
+    runningSum = 0,   -- Sum of all values (for average calculation)
+    runningCount = 0, -- Count of all values (for average calculation)
+
+    init = function(bar)
+      -- Set window properties
+      bar.windowSettings =
+          _imgui.ImGuiWindowFlags.NoInputs +
+          _imgui.ImGuiWindowFlags.NoBackground
+
+      ---@diagnostic disable:param-type-mismatch
+
+      local function hpExtractor(e)
+        ---@diagnostic disable:undefined-field
+        ---@diagnostic disable:inject-field
+
+        local damage=nil
+        local mobName
+        local crit = false
+        if e.Data.Name ~= nil then
+          mobName = e.Data.Name
+          damage = e.Data.DamageDone
+        elseif (e.Data.Type == LogTextType.Magic or e.Data.Type == LogTextType.CombatSelf) then
+          local r = Regex.new(
+            "^(?<crit>Critical hit!  )?(?:[^!]+! )*(?:(?:You (?:hit|mangle|slash|cut|scratch|gore|impale|stab|nick|crush|smash|bash|graze|incinerate|burn|scorch|singe|freeze|frost|chill|numb|dissolve|corrode|sear|blister|blast|jolt|shock|spark) (?<mobName>.*?) for (?<damage>[\\d,]+) points (?:.*))|(?:With .*? you drain (?<drainDamage>[\\d,]+) points of health from (?<magicMobName>.*?))\\.)$"
+          )
+          local m = r.Match(e.Data.Text)
+          if (m.Success) then
+            if m.Groups["crit"].Success then
+              print("you crit")
+              crit = true
+            end
+            if m.Groups["damage"].Success then
+              damage=m.Groups["damage"].Value
+            elseif m.Groups["drainDamage"].Value then
+              damage=m.Groups["drainDamage"].Value
+            end
+          end
+        end
+        ---@diagnostic enable:undefined-field
+        ---@diagnostic enable:inject-field
+        if damage~=nil then
+          table.insert(bar.entries, {
+            text = damage .. (crit and "!" or ""),
+            value =  math.abs(tonumber(damage or 0)), -- Store the absolute value for scaling
+            positive = tonumber(damage)>0,
+            time = os.clock(),
+          })
+          -- Update the running sum and count
+          bar.runningSum = bar.runningSum + math.abs(tonumber(damage or 0))
+          bar.runningCount = bar.runningCount + 1
+        end
+      end
+      
+      game.Messages.Incoming.Combat_HandleAttackerNotificationEvent.Add(hpExtractor)
+      game.Messages.Incoming.Communication_TextboxString.Add(hpExtractor)
+
+      game.Messages.Incoming.Combat_HandleEvasionAttackerNotificationEvent.Add(function(e)
+        table.insert(bar.entries, {
+          text = "Evade",
+          positive = false,
+          time = os.clock(),
+        })
+      end)
+      game.Messages.Incoming.Combat_HandleVictimNotificationEventOther.Add(function(e)
+        if game.Character.Weenie.Vitals[VitalId.Health].Current~=0 then --initial lazy check it's not me who died. i do not think this would work
+          table.insert(bar.entries, {
+            text = "RIP",
+            positive = false,
+            time = os.clock()
+          })
+        end
+      end)
+      ---@diagnostic enable:param-type-mismatch
+
+    end,
+
+    render = renderEvent
+  },
+  { name = "render_damageTaken",
+    fontScale_min = 2,
+    fontScale_max = 3,
+    text = function(bar) return " " end,
+    fontColorPositive_BBGGRRstring = "00FF00",
+    fontColorNegative_BBGGRRstring = "0000FF",
+    fadeDuration = 2, -- How long the text stays on screen
+    floatSpeed = 1,   -- Speed of the floating text
+    entries = {},     -- Table to store hp changes
+    runningSum = 0,   -- Sum of all values (for average calculation)
+    runningCount = 0, -- Count of all values (for average calculation)
+
+    init = function(bar)
+      -- Set window properties
+      bar.windowSettings =
+          _imgui.ImGuiWindowFlags.NoInputs +
+          _imgui.ImGuiWindowFlags.NoBackground
+
+      -- Subscribe to stamina change events
+      game.Character.OnVitalChanged.Add(function(changedVital)
+        if changedVital.Type == VitalId.Health then
+          local delta = changedVital.Value - changedVital.OldValue
+          table.insert(bar.entries, {
+            text = tostring(delta),
+            value = math.abs(delta), -- Store the absolute value for scaling
+            positive = delta > 0,
+            time = os.clock(),
+          })
+          -- Update the running sum and count
+          bar.runningSum = bar.runningSum + math.abs(delta)
+          bar.runningCount = bar.runningCount + 1
+        end
+      end)
+    end,
+
+    render = renderEvent
   }
 }
 return bars

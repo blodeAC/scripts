@@ -114,10 +114,10 @@ local function init()
   local function lootNextCorpse(corpseIndexOverride)
     local nextCorpseId = corpseList[corpseIndexOverride or 1]
     if nextCorpseId then
-      if debug then print("Looting corpse: " .. nextCorpseId) end
+      if config.debug then print("Looting corpse: " .. nextCorpseId) end
       game.World.Get(nextCorpseId).Use(genericActionOpts)
     else
-      if debug then print("No corpses to loot") end
+      if config.debug then print("No corpses to loot") end
     end
   end
 

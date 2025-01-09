@@ -43,9 +43,9 @@ local init = function()
         self.redbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, 0, 0, -0.25)
         self.redbar.OrientToPlayer(false)
       end
-      self.redbar.ScaleX = 0.99
       self.redbar.Visible = true
-      
+
+      self.hpbar.Visible = true
       self.hpbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, offset["NS"], offset["EW"], -0.25)
       self.hpbar.ScaleX = self.hp
 
@@ -235,8 +235,8 @@ local init = function()
   -------------------------------------
 
   -- Event listener for when an object is created
-  game.Messages.Incoming.Item_CreateObject.Add(function(e)
-    local wobjectId = e.Data.ObjectId
+  game.World.OnObjectCreated.Add(function(e)
+    local wobjectId = e.ObjectId
     local weenie = game.World.Get(wobjectId)
 
     -- If the object passes the filter, insert it into wobjects
@@ -254,7 +254,6 @@ local init = function()
       else
         if wobject.hp ~= e.Data.HealthPercent then --expected?
           wobject.dmgPercent = wobject.hp - e.Data.HealthPercent
-          wobject.lasthp = wobject.hp
           wobject.hp = e.Data.HealthPercent
           wobject.lastUpdate = os.clock()
           --wobject.expected=false
@@ -312,7 +311,7 @@ local init = function()
       damage = e.Data.DamageDone
     elseif (e.Data.Type == LogTextType.Magic) then
       local test = Regex.Match(e.Data.Text,
-        "^(?:(?:Critical hit! )?You (?:hit|mangle|slash|cut|scratch|gore|impale|stab|nick|crush|smash|bash|graze|incinerate|burn|scorch|singe|freeze|frost|chill|numb|dissolve|corrode|sear|blister|blast|jolt|shock|spark) (.*?) for ([\\d,]+) points with |With .*? you drain ([\\d+,]+) points of health from (.*).$)")
+        "^(?:(?:Sneak attack! )(?:Critical hit! )?You (?:hit|mangle|slash|cut|scratch|gore|impale|stab|nick|crush|smash|bash|graze|incinerate|burn|scorch|singe|freeze|frost|chill|numb|dissolve|corrode|sear|blister|blast|jolt|shock|spark) (.*?) for ([\\d,]+) points with |With .*? you drain ([\\d+,]+) points of health from (.*).$)")
       mobName = test.Groups[1].Value ~= "" and test.Groups[1].Value or test.Groups[4].Value ~= "" and test.Groups[4].Value or
       nil
       damage = test.Groups[2].Value ~= "" and test.Groups[2].Value or test.Groups[3].Value
@@ -325,7 +324,7 @@ local init = function()
 
     local bestGuess = nil
     for _, wobject in pairs(wobjects) do
-      if wobject.name == mobName and wobject.lastUpdate ~= nil and os.difftime(os.clock(), wobject.lastUpdate) < 0.5 then
+      if wobject.name == mobName and wobject.lastUpdate ~= nil and os.difftime(os.clock(), wobject.lastUpdate) < 0.5 then -- 500ms max delay between hprequest and damage message
         bestGuess = bestGuess or wobject
         if wobject.lastUpdate < bestGuess.lastUpdate then
           bestGuess = wobject
@@ -352,20 +351,6 @@ local init = function()
   game.Messages.Incoming.Combat_HandleAttackerNotificationEvent.Add(hpCorrelator)
   game.Messages.Incoming.Communication_TextboxString.Add(hpCorrelator)
 
-  -- Event listener for object deletion
-  game.Messages.Incoming.Item_DeleteObject.Add(function(e)
-    local wobject = wobjects[e.Data.ObjectId]
-    -- Remove wobject from table if it exists
-    if (wobject) then
-      if wobject.hpbar ~= nil then wobject.hpbar.Dispose() end
-      if wobject.redbar ~= nil then wobject.redbar.Dispose() end
-      if wobject.ticker ~= nil then wobject.ticker.Dispose() end
-      if wobject.hpText ~= nil then wobject.hpText.Dispose() end
-      wobjects[e.Data.ObjectId] = nil
-      wobject = nil
-    end
-  end)
-
   -- Event listener for script end, to clean up resources
   game.OnScriptEnd.Add(function(e)
     for i, wobject in pairs(wobjects) do
@@ -386,10 +371,8 @@ local init = function()
       local coords=nil
       if game.World.Exists(wobject.id) then coords=acclient.Movement.GetPhysicsCoordinates(wobject.id) end
       if coords and acclient.Coordinates.Me.DistanceTo(coords)>maxDistanceForVisibility then
-      --[[  pcall(function()
-          wobject.hpbar.ScaleX=0.01
-          wobject.redbar.ScaleX=0.01
-        end)--]]
+        wobject.hpbar.Visible=false
+        wobject.redbar.Visible=false
       else
         wobject:anchorHpBar()
       end
