@@ -8,6 +8,20 @@ local bars = require("bars")
 local borderColor = 0xFF000000 -- Black color for borders
 local borderSize = 0           -- Thickness of the border; 0 to disable
 
+
+-- ACTIONQUEUE CONFIG
+local genericActionOpts=ActionOptions.new()
+---@diagnostic disable
+genericActionOpts.MaxRetryCount=0
+genericActionOpts.TimeoutMilliseconds=100
+---@diagnostic enable
+local genericActionCallback=function(e)
+  if not e.Success then
+    print(e.Error)
+  end
+end
+
+
 ---------------------------------------
 --- icons
 ---------------------------------------

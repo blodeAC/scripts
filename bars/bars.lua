@@ -120,6 +120,143 @@ local function renderEvent(bar)
   bar.entries = validEntries
 end
 
+local mobToSearch = ""
+local currentMob = nil
+
+local function findMobByName(name)
+  if name == "" then
+    return nil
+  end
+
+  local matchingMob = nil
+  local minDistance = math.huge
+  
+  for _, object in ipairs(game.World.GetLandscape()) do
+    if string.find(string.lower(object.Name), string.lower(name)) then
+      local distance = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(object.Id))
+      if distance < minDistance and (matchingMob == nil or matchingMob.Distance < distance) then
+        minDistance = distance
+        matchingMob = {
+          Id = object.Id,
+          Name = object.Name,
+          Distance = distance,
+          Coordinates = acclient.Movement.GetPhysicsCoordinates(object.Id),
+        }
+      end
+    end
+  end
+  return matchingMob
+end
+
+local function renderArrowToMob()
+  ---@diagnostic disable:undefined-field
+  if not game.World.Exists(currentMob.Id) then
+    currentMob=nil
+    return
+  end
+  local angleToMob = math.rad(acclient.Coordinates.Me.HeadingTo(acclient.Movement.GetPhysicsCoordinates(currentMob.Id)))
+  ---@diagnostic enable:undefined-field
+
+  -- Get the relative heading: the difference between your current heading and the heading to the mob
+  local relativeAngle = angleToMob - math.rad(acclient.Movement.Heading - 270)
+  
+  -- Normalize the angle to be between 0 and 2*pi (if necessary)
+  if relativeAngle < 0 then
+    relativeAngle = relativeAngle + 2 * math.pi
+  elseif relativeAngle > 2 * math.pi then
+    relativeAngle = relativeAngle - 2 * math.pi
+  end
+
+  -- Get window position and draw list
+  local windowPos = ImGui.GetWindowPos()
+  local drawList = ImGui.GetWindowDrawList()
+
+  -- Get the window size
+  local windowSize = ImGui.GetWindowSize()
+
+  -- Estimate the height of previous elements (text and input)
+  local previousElementsHeight = 50  -- Adjust this based on your actual UI layout
+
+  -- Define the center of the remaining content area
+  local centerX = windowPos.X + windowSize.X / 2
+  local centerY = windowPos.Y + previousElementsHeight + (windowSize.Y - previousElementsHeight) / 2
+
+  -- Calculate arrow dimensions based on available space
+  local arrowLength = math.min(windowSize.Y - previousElementsHeight, windowSize.X) * 0.8
+  local arrowWidth = arrowLength * 0.8
+
+  -- Calculate arrow points
+  local tipX = centerX + math.cos(relativeAngle) * (arrowLength / 2)
+  local tipY = centerY + math.sin(relativeAngle) * (arrowLength / 2)
+
+  local baseAngle1 = relativeAngle + math.pi * 5/6
+  local baseAngle2 = relativeAngle - math.pi * 5/6
+  local baseX1 = centerX + math.cos(baseAngle1) * (arrowWidth / 2)
+  local baseY1 = centerY + math.sin(baseAngle1) * (arrowWidth / 2)
+  local baseX2 = centerX + math.cos(baseAngle2) * (arrowWidth / 2)
+  local baseY2 = centerY + math.sin(baseAngle2) * (arrowWidth / 2)
+
+  -- Draw the arrow
+  drawList.AddTriangleFilled(
+    Vector2.new(tipX, tipY),
+    Vector2.new(baseX1, baseY1),
+    Vector2.new(baseX2, baseY2),
+    0xFF0000FF  -- Red color
+  )
+
+  -- Add an outline
+  drawList.AddTriangle(
+    Vector2.new(tipX, tipY),
+    Vector2.new(baseX1, baseY1),
+    Vector2.new(baseX2, baseY2),
+    0xFFFFFFFF,  -- White outline
+    1.0  -- Line thickness
+  )
+end
+
+local function renderMobPointer(bar)
+  ImGui.Text("  ")
+  ImGui.SameLine()
+
+  -- Input box for mob name
+  ImGui.PushItemWidth(-1)
+  local inputChanged, newMobName = ImGui.InputText("###MobNameInput", mobToSearch, 24, _imgui.ImGuiInputTextFlags.None)
+  ImGui.PopItemWidth()
+
+  local isInputActive = ImGui.IsItemActive()
+
+  -- Placeholder text
+  if mobToSearch == "" and not isInputActive then
+    local inputPos = ImGui.GetItemRectMin()
+    local textSize = ImGui.CalcTextSize("Mob Name")
+    local textPos = Vector2.new(inputPos.X + 5, inputPos.Y + (ImGui.GetItemRectSize().Y - textSize.Y) * 0.5)
+
+    ImGui.PushStyleColor(_imgui.ImGuiCol.Text, 0xFF888888)
+    ImGui.SetCursorScreenPos(textPos)
+    ImGui.Text("Mob Name")
+    ImGui.PopStyleColor()
+    ImGui.SetCursorPosY(ImGui.GetCursorPosY() - ImGui.GetTextLineHeight())
+  end
+
+  -- Check if Enter was pressed while the input box was focused
+  if inputChanged and ImGui.IsKeyPressed(_imgui.ImGuiKey.Enter) then
+    -- Update mobToSearch and find the mob when Enter is pressed
+    mobToSearch = newMobName or ""
+    currentMob = findMobByName(mobToSearch)
+  end
+
+  -- Only add NewLine if the input is not active
+  if not isInputActive and (mobToSearch==nil or mobToSearch=="") then
+    ImGui.Text(" ")
+  end
+
+  if currentMob then
+    renderArrowToMob()
+    ImGui.Text(string.format("  %s (%.2f m)", currentMob.Name, acclient.Coordinates.Me.DistanceTo(currentMob.Coordinates)))
+  else
+    ImGui.Text("  No matching mob detected")
+  end
+end
 
 -- BARS
 local bars = {}
@@ -130,7 +267,7 @@ bars = {
       textAlignment="center", type = "progress",
       max  = function() return vitals[VitalId.Health].Max end,
       value= function() return vitals[VitalId.Health].Current end,
-      text = function() return "  "..vitals[VitalId.Health].Current .." / " .. vitals[VitalId.Health].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Health].Current)/(vitals[VitalId.Health].Max)*100) ..")" end
+      text = function() return "  "..vitals[VitalId.Health].Current .." / " .. vitals[VitalId.Health].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Health].Current)/(vitals[VitalId.Health].Max)*100) ..")" end
 
   }, -- add "fontScale = 1.5" property to scale font 1.5x to any bar (or any other size), as needed
   { name = "Stamina", color = 0xAA00AAAA, icon = 0x060069E8,
@@ -138,14 +275,14 @@ bars = {
       textAlignment="center", type = "progress",
       max  = function() return vitals[VitalId.Stamina].Max end,
       value= function() return vitals[VitalId.Stamina].Current end,
-      text = function() return "  "..vitals[VitalId.Stamina].Current .." / " .. vitals[VitalId.Stamina].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Stamina].Current)/(vitals[VitalId.Stamina].Max)*100) ..")" end
+      text = function() return "  "..vitals[VitalId.Stamina].Current .." / " .. vitals[VitalId.Stamina].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Stamina].Current)/(vitals[VitalId.Stamina].Max)*100) ..")" end
   },
   { name = "Mana",    color = 0xAAAA0000, icon = 0x060069EA,
       windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,  
       textAlignment="center", type = "progress",
       max  = function() return vitals[VitalId.Mana].Max end,
       value= function() return vitals[VitalId.Mana].Current end,
-      text = function() return "  "..vitals[VitalId.Mana].Current .." / " .. vitals[VitalId.Mana].Max .. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Mana].Current)/(vitals[VitalId.Mana].Max)*100) ..")" end
+      text = function() return "  "..vitals[VitalId.Mana].Current .." / " .. vitals[VitalId.Mana].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Mana].Current)/(vitals[VitalId.Mana].Max)*100) ..")" end
   },
   { name = "Distance",fontScale = 1.5, icon = 0x060064E5,
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
@@ -457,6 +594,28 @@ bars = {
     end,
 
     render = renderEvent
+  },
+  { name = "^mobPointer",
+    init = function(bar)
+      game.World.OnObjectCreated.Add(function(e)
+        if mobToSearch and mobToSearch~="" and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(mobToSearch)) then
+          if game.Character.InPortalSpace then
+            game.Character.OnPortalSpaceExited.Once(function()
+              currentMob=findMobByName(mobToSearch)
+            end)
+          else
+            currentMob=findMobByName(mobToSearch)
+          end          
+        end
+      end)
+      game.World.OnObjectReleased.Add(function(e)
+        ---@diagnostic disable-next-line
+        if currentMob and e.ObjectId==currentMob.Id then
+          currentMob=findMobByName(mobToSearch)
+        end
+      end)
+    end,
+    render = renderMobPointer
   }
 }
 return bars

@@ -1,9 +1,15 @@
----CONFIGURATION
-local maxDistanceForVisibility = 60
+---@diagnostic disable:lowercase-global
+config = require("config")
+local acclient = require("acclient")
 
-------------------------------------
+
 local init = function()
-  local acclient = require("acclient")
+  local settingsFile = "target_settings.json"
+  local io = require("filesystem").GetScript()
+  targetHud = require("targetFrame")
+
+  wobjects_hp={}
+  
   -- Metatable for wobject to define health bar related methods
   local wobjectMeta = {
     -- Method to calculate offset coordinates based on angle and scalar
@@ -37,32 +43,35 @@ local init = function()
 
     -- Method to anchor the health bar to the wobject
     anchorHpBar = function(self, init)
-      local offset = self:getOffsetCoordinates(90, 1 - self.hp)
-      if offset == nil then return end
-      if init then
-        self.redbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, 0, 0, -0.25)
-        self.redbar.OrientToPlayer(false)
-      end
-      self.redbar.Visible = true
-
-      self.hpbar.Visible = true
-      self.hpbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, offset["NS"], offset["EW"], -0.25)
-      self.hpbar.ScaleX = self.hp
-
-      local fwoffset = self:getOffsetCoordinates(0, 0.2, false)
-      self.hpText.Anchor(self.id, self.height + self.ticker.ScaleY / 2, fwoffset["NS"], fwoffset["EW"], -0.25)
-      if self.hp ~= 1 then
-        self:orientHpBar()
+      if (game.World.Selected and game.World.Selected.Id==self.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp) then
+        return
       else
-        self.hpbar.OrientToPlayer(false)
+        local offset = self:getOffsetCoordinates(90, 1 - self.hp)
+        if offset == nil then return end
+        if init then
+          self.redbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, 0, 0, -0.25)
+          self.redbar.OrientToPlayer(false)
+        end
+        self.redbar.Visible = true
+
         self.hpbar.Visible = true
+        self.hpbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, offset["NS"], offset["EW"], -0.25)
+        self.hpbar.ScaleX = self.hp
+
+        local fwoffset = self:getOffsetCoordinates(0, 0.2, false)
+        self.hpText.Anchor(self.id, self.height + self.ticker.ScaleY / 2, fwoffset["NS"], fwoffset["EW"], -0.25)
+        if self.hp ~= 1 then
+          self:orientHpBar()
+        else
+          self.hpbar.OrientToPlayer(false)
+          self.hpbar.Visible = true
+        end
       end
     end
   }
 
   -- Table to hold all wobjects, with custom insert method and custom pairs iterator
-  local wobjects
-  wobjects = setmetatable({
+  wobjects_hp = setmetatable({
     insert = function(self, wobject)
       -- Set metatable for the new wobject to use wobjectMeta
 
@@ -240,13 +249,13 @@ local init = function()
     local weenie = game.World.Get(wobjectId)
 
     -- If the object passes the filter, insert it into wobjects
-    if (wobjects[wobjectId] == nil and filter:check(weenie)) then
-      wobjects:insert({ id = wobjectId, hp = 1 })
+    if (wobjects_hp[wobjectId] == nil and filter:check(weenie)) then
+      wobjects_hp:insert({ id = wobjectId, hp = 1 })
     end
   end)
 
   game.Messages.Incoming.Combat_QueryHealthResponse.Add(function(e)
-    local wobject = wobjects[e.Data.ObjectId]
+    local wobject = wobjects_hp[e.Data.ObjectId]
 
     if (wobject ~= nil) then
       if (e.Data.HealthPercent <= 0) then
@@ -259,7 +268,8 @@ local init = function()
           --wobject.expected=false
           wobject:anchorHpBar()
         end
-        if game.World.Selected~=nil and game.World.Selected.Id == e.Data.ObjectId and wobject.maxHp then
+        if game.World.Selected~=nil and game.World.Selected.Id == e.Data.ObjectId and wobject.maxHp and 
+           (not config.targetHudConfig or not config.targetHudConfig.hideSelectionHp) then
           wobject.hpText.SetText(acclient.DecalD3DTextType.Text3D, tostring(math.floor(e.Data.HealthPercent*wobject.maxHp+0.5)) .. " / " .. tostring(wobject.maxHp), "Arial",
           0xFFFFFFFF)
           wobject.hpText.Visible = true
@@ -274,7 +284,7 @@ local init = function()
     local wobjectId = e.Data.ObjectId
 
     -- Request health update if the wobject exists and the script is health-related. Don't send if targeted bc those are free
-    if (wobjects[wobjectId] ~= nil and healthPlayScripts[e.Data.ScriptId] ~= nil) then
+    if (wobjects_hp[wobjectId] ~= nil and healthPlayScripts[e.Data.ScriptId] ~= nil) then
       ---@diagnostic disable-next-line: undefined-field
       acclient.Client.RequestHealthUpdate(wobjectId)
       --wobjects[wobjectId].expected=true
@@ -284,7 +294,7 @@ local init = function()
   game.Messages.Incoming.Effects_SoundEvent.Add(function(e)
     local wobjectId = e.Data.ObjectId
     
-    if (wobjects[wobjectId] ~= nil and e.Data.SoundType == Sound.HitFlesh1) then
+    if (wobjects_hp[wobjectId] ~= nil and e.Data.SoundType == Sound.HitFlesh1) then
       ---@diagnostic disable-next-line: undefined-field
       acclient.Client.RequestHealthUpdate(wobjectId)
     end
@@ -293,8 +303,8 @@ local init = function()
   --wipe out text on deselect
   game.World.OnObjectSelected.Add(function(e)
     if lastSelected ~= nil then
-      if wobjects[lastSelected] ~= nil then
-        wobjects[lastSelected].hpText.Visible = false
+      if wobjects_hp[lastSelected] ~= nil then
+        wobjects_hp[lastSelected].hpText.Visible = false
       end
     end
     lastSelected = e.ObjectId
@@ -323,7 +333,7 @@ local init = function()
     end
 
     local bestGuess = nil
-    for _, wobject in pairs(wobjects) do
+    for _, wobject in pairs(wobjects_hp) do
       if wobject.name == mobName and wobject.lastUpdate ~= nil and os.difftime(os.clock(), wobject.lastUpdate) < 0.5 then -- 500ms max delay between hprequest and damage message
         bestGuess = bestGuess or wobject
         if wobject.lastUpdate < bestGuess.lastUpdate then
@@ -353,7 +363,7 @@ local init = function()
 
   -- Event listener for script end, to clean up resources
   game.OnScriptEnd.Add(function(e)
-    for i, wobject in pairs(wobjects) do
+    for i, wobject in pairs(wobjects_hp) do
       ---@diagnostic disable:undefined-field
       -- Dispose of the health bar objects when the script ends
       if wobject.hpbar ~= nil then wobject.hpbar.Dispose() end
@@ -366,11 +376,11 @@ local init = function()
 
   -- Function to update position of health bars when the character's position changes
   local function positionChanged(e)
-    for _, wobject in pairs(wobjects) do
+    for _, wobject in pairs(wobjects_hp) do
       ---@diagnostic disable
       local coords=nil
       if game.World.Exists(wobject.id) then coords=acclient.Movement.GetPhysicsCoordinates(wobject.id) end
-      if coords and acclient.Coordinates.Me.DistanceTo(coords)>maxDistanceForVisibility then
+      if coords and acclient.Coordinates.Me.DistanceTo(coords)>(config.maxDistanceForVisibility or math.huge) then
         wobject.hpbar.Visible=false
         wobject.redbar.Visible=false
       else
@@ -382,11 +392,92 @@ local init = function()
 
   -- Insert initial objects that pass the filter
   for i, wobject in ipairs(game.World.GetAll(function(weenie) return filter:check(weenie) end)) do
-    wobjects:insert({ id = wobject.Id, hp = 1 })
+    wobjects_hp:insert({ id = wobject.Id, hp = 1 })
   end
 
   -- Add listener for when the character's position changes
   game.Character.Weenie.OnPositionChanged.Add(positionChanged)
+
+----------------------------------------
+--- Settings Saving/Loading
+  ----------------------------------------
+
+  -- Load settings from a JSON file
+  function loadSettings()
+    local files = io.FileExists(settingsFile)
+    if files then
+      local content = io.ReadText(settingsFile)
+      local settings = json.parse(content)
+      if settings and settings[game.ServerName] and settings[game.ServerName][game.Character.Weenie.Name] then
+        local characterSettings = settings[game.ServerName][game.Character.Weenie.Name]
+        
+        if characterSettings then
+          targetPosition = Vector2.new(characterSettings.targetPosition.X, characterSettings.targetPosition.Y)
+          targetSize = Vector2.new(characterSettings.targetSize.X, characterSettings.targetSize.Y)
+        end
+        targetHide = characterSettings and characterSettings.targetHide or false
+      
+      end
+    end
+  end
+
+  -- Function to pretty-print JSON (never omitted again!)
+  local function prettyPrintJSON(value, indent)
+    local function wrapString(value)
+      return '"' .. value:gsub('"', '\\"') .. '"'
+    end
+
+    indent = indent or ""
+    local indentNext = indent .. "  "
+    local items = {}
+
+    if type(value) == "table" then
+      local isArray = #value > 0
+      for k, v in pairs(value) do
+        local formattedKey = isArray and "" or wrapString(k) .. ": "
+        table.insert(items, indentNext .. formattedKey .. prettyPrintJSON(v, indentNext))
+      end
+      if isArray then
+        return "[\n" .. table.concat(items, ",\n") .. "\n" .. indent .. "]"
+      else
+        return "{\n" .. table.concat(items, ",\n") .. "\n" .. indent .. "}"
+      end
+    elseif type(value) == "string" then
+      return wrapString(value)
+    else
+      return tostring(value)
+    end
+  end
+
+  -- Save settings to a JSON file with prettification (indentation)
+  function saveSettings()
+    local settings = {}
+    local files = io.FileExists(settingsFile)
+    if files then
+      local content = io.ReadText(settingsFile)
+      settings = json.parse(content) or {}
+    end
+
+    if not settings[game.ServerName] then
+      settings[game.ServerName] = {}
+    end
+    if not settings[game.ServerName][game.Character.Weenie.Name] then
+      settings[game.ServerName][game.Character.Weenie.Name] = {}
+    end
+
+    if targetPosition and targetSize then
+      settings[game.ServerName][game.Character.Weenie.Name] = {
+        targetPosition = { X = targetPosition.X, Y = targetPosition.Y },
+        targetSize = { X = targetSize.X, Y = targetSize.Y }
+      }
+      settings[game.ServerName][game.Character.Weenie.Name].targetHide = targetHide or false
+    end
+
+    io.WriteText(settingsFile, prettyPrintJSON(settings))
+  end
+
+  -- Load settings when the script starts.
+  loadSettings()
 end
 
 if game.State == ClientState.In_Game then
@@ -396,5 +487,7 @@ end
 game.OnStateChanged.Add(function(state)
   if state.NewState == ClientState.In_Game then
     init()
+  else
+    targetHud.Dispose()
   end
 end)
