@@ -5,8 +5,8 @@ local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
 local bars = require("bars")
 
-local borderColor = 0xFF000000 -- Black color for borders
-local borderSize = 0           -- Thickness of the border; 0 to disable
+local borderColor = 0xFFFFFFFF -- White color for borders
+local borderSize = 2           -- Thickness of the border; 0 to disable
 
 
 -- ACTIONQUEUE CONFIG
