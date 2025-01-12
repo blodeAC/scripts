@@ -665,7 +665,9 @@ bars = {
       end
       scan()
       game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
-        bar.cooldown=cooldownChanged.Cooldown.ExpiresAt
+        if bar.id and cooldownChanged.Cooldown.ObjectId==bar.id then
+          bar.cooldown=cooldownChanged.Cooldown.ExpiresAt
+        end
       end)
       game.Messages.Incoming.Qualities_UpdateInstanceID.Add(function(updateInstance)
         local objectId=updateInstance.Data.ObjectId
