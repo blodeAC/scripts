@@ -1,5 +1,7 @@
 local _imgui = require("imgui")
-return {
+local ImGui = _imgui.ImGui
+local config={}
+config = {
   maxDistanceForVisibility = 100,
   targetHudConfig={
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
@@ -13,12 +15,47 @@ return {
     },
     color = 0x800000FF,
     textAlignment = "center",
-    text = function(target)
-      if target.maxHp then
-        return target.name .. "  (".. tostring(math.floor(target.hp*target.maxHp+0.5)) .. " / " .. tostring(target.maxHp) ..")"
-      else
-        return " " .. target.name
+    ---@param progressBarStartPos Vector2
+    ---@param progressBarSize Vector2
+    text = function(progressBarStartPos,progressBarSize)
+      local leftText={}
+      local centeredText={}
+      local rightText={}
+      local blankLine= " "
+      centeredText={
+        target.name,
+        blankLine
+      }
+      rightText={
+        blankLine,
+        target.maxHp and tostring(math.floor(target.hp*target.maxHp+0.5)) .. " / " .. tostring(target.maxHp) or " "
+      }
+      leftText={
+        blankLine,
+        "  " .. tostring(game.World.Get(target.id).Value(IntId.Level))
+      }
+      for i,text in ipairs(leftText) do
+        local textSize=ImGui.CalcTextSize(text)
+        local Yadjustment=i*(progressBarSize.Y/#centeredText)-textSize.Y
+        local startPos = progressBarStartPos + Vector2.new(0,Yadjustment)
+        ImGui.SetCursorScreenPos(startPos)
+        ImGui.Text(text)
+      end
+      for i,text in ipairs(centeredText) do
+        local textSize=ImGui.CalcTextSize(text)
+        local Yadjustment=i*(progressBarSize.Y/#centeredText)-textSize.Y
+        local startPos = progressBarStartPos + Vector2.new(progressBarSize.X/2-textSize.X/2, Yadjustment)
+        ImGui.SetCursorScreenPos(startPos)
+        ImGui.Text(text)
+      end
+      for i,text in ipairs(rightText) do
+        local textSize=ImGui.CalcTextSize(text)
+        local Yadjustment=i*(progressBarSize.Y/#centeredText)-textSize.Y
+        local startPos = progressBarStartPos + Vector2.new(progressBarSize.X-textSize.X,Yadjustment)
+        ImGui.SetCursorScreenPos(startPos)
+        ImGui.Text(text)
       end
     end
   }
 }
+return config

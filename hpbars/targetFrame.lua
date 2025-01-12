@@ -6,7 +6,7 @@ local targetHudConfig = config.targetHudConfig
 -------------------------------------------------
 --- IMGUI for TARGETHUD
 -------------------------------------------------
-local function imguiAligner(config, text, start, size)
+function imguiAligner(config, text, start, size)
   -- Default to current cursor position and content region if not provided
   start = start or ImGui.GetCursorScreenPos() or Vector2.new(0, 0) -- Ensure it's not nil
   size = size or ImGui.GetContentRegionAvail()
@@ -108,15 +108,13 @@ targetRender = function()
 
     -- Render the progress bar inside the HUD without default text.
     local progressBarSize = Vector2.new(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y)
+    --print(progressBarSize)
     local progressFraction = target.hp / 1 
     local progressBarStartPos = ImGui.GetCursorScreenPos()   -- Save the starting position of the progress bar
     ImGui.ProgressBar(progressFraction, progressBarSize, "") -- Render bar without default text
 
     -- Calculate and render custom text based on alignment setting
-    local text = targetHudConfig.text and targetHudConfig.text(target) or string.format("%.0f%%%%", progressFraction * 100)
-
-    imguiAligner(targetHudConfig, text, progressBarStartPos, progressBarSize)
-    ImGui.Text(text)
+    targetHudConfig.text(progressBarStartPos,progressBarSize)
 
     ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
     
