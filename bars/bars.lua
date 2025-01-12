@@ -303,14 +303,31 @@ bars = {
       text = function() return "  "..vitals[VitalId.Mana].Current .." / " .. vitals[VitalId.Mana].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Mana].Current)/(vitals[VitalId.Mana].Max)*100) ..")" end
   },
   { name = "Distance",fontScale = 1.5, icon = 0x060064E5,
+    type = "text",
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
     minDistance = 35,
+    range1 = 50,
     maxDistance = 60,
-    type = "text",
+    styleColor = {
+      {_imgui.ImGuiCol.Text, function(bar)
+        local dist=tonumber(bar:text())
+        if not dist then
+          return 0xFFFFFFFF  -- doesn't matter but need to return something
+        elseif dist>bar.maxDistance then
+          return 0xFFFFFFFF  --AABBGGRR, so white
+        elseif dist>bar.range1 then
+          return 0xFFFFFFFF
+        elseif dist>bar.minDistance then
+          return 0xFF00FF00  --AABBGGRR, so red
+        else
+          return 0xFFFFFFFF  --doesn't matter but need to return something
+        end
+       end}
+    },
     text =  function(bar)
       if game.World.Selected==nil or game.World.Selected.ObjectClass~=ObjectClass.Monster then return "" end
       local dist=acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))
-      return dist>bar.minDistance and dist<bar.maxDistance and string.format("%.1f%",dist) or ""
+      return dist>bar.minDistance and dist<bar.maxDistance and string.format("%.1f",dist) or ""
     end
   },
   { name = "bag_salvageme", type = "button", icon = 9914,

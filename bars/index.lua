@@ -252,10 +252,10 @@ for i, bar in ipairs(bars) do
       ImGui.SetWindowFontScale(fontScale)
 
       for _, style in ipairs(bar.stylevar or {}) do
-        ImGui.PushStyleVar(style[1], style[2])
+        ImGui.PushStyleVar(style[1], type(style[2])=="function" and style[2](bar) or style[2])
       end
       for _,color in ipairs(bar.styleColor or {}) do
-        ImGui.PushStyleColor(color[1],color[2])
+        ImGui.PushStyleColor(color[1],type(color[2])=="function" and color[2](bar) or color[2])
       end
 
       if bar.type == "progress" then
