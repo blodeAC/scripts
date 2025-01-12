@@ -5,23 +5,6 @@ local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
 local bars = require("bars")
 
-local borderColor = 0xFFFFFFFF -- White color for borders
-local borderSize = 2           -- Thickness of the border; 0 to disable
-
-
--- ACTIONQUEUE CONFIG
-local genericActionOpts=ActionOptions.new()
----@diagnostic disable
-genericActionOpts.MaxRetryCount=0
-genericActionOpts.TimeoutMilliseconds=100
----@diagnostic enable
-local genericActionCallback=function(e)
-  if not e.Success then
-    print(e.Error)
-  end
-end
-
-
 ---------------------------------------
 --- icons
 ---------------------------------------
@@ -307,8 +290,8 @@ for i, bar in ipairs(bars) do
       
       -- Save position/size when Ctrl is pressed.
       if ImGui.GetIO().KeyCtrl then
-        local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize())
-        local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize())
+        local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize()/fontScale)
+        local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize()/fontScale)
 
         if currentPos.X ~= (barPositions[i] and barPositions[i].X or -1) or
             currentPos.Y ~= (barPositions[i] and barPositions[i].Y or -1) or
