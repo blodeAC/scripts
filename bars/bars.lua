@@ -651,7 +651,7 @@ bars = {
     end,
     render = renderMobPointer
   },
-  { name="BlueAetheria",
+  { name="BlueAetheria", --important, must be correctly capitalized for enum to work
     fontScale=2,
     init=function(bar)
       local function scan()
