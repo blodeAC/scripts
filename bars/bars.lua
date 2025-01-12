@@ -265,6 +265,12 @@ bars = {
   { name = "Health",  color = 0xAA0000AA, icon = 0x060069E9,
       windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground, 
       textAlignment="center", type = "progress",
+      stylevar={
+        { _imgui.ImGuiStyleVar.FrameBorderSize, 2}
+      },
+      styleColor={
+        {_imgui.ImGuiCol.Border, 0xFFFFFFFF}
+      },
       max  = function() return vitals[VitalId.Health].Max end,
       value= function() return vitals[VitalId.Health].Current end,
       text = function() return "  "..vitals[VitalId.Health].Current .." / " .. vitals[VitalId.Health].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Health].Current)/(vitals[VitalId.Health].Max)*100) ..")" end
@@ -273,6 +279,12 @@ bars = {
   { name = "Stamina", color = 0xAA00AAAA, icon = 0x060069E8,
       windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
       textAlignment="center", type = "progress",
+      stylevar={
+        { _imgui.ImGuiStyleVar.FrameBorderSize, 2}
+      },
+      styleColor={
+        {_imgui.ImGuiCol.Border, 0xFFFFFFFF}
+      },
       max  = function() return vitals[VitalId.Stamina].Max end,
       value= function() return vitals[VitalId.Stamina].Current end,
       text = function() return "  "..vitals[VitalId.Stamina].Current .." / " .. vitals[VitalId.Stamina].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Stamina].Current)/(vitals[VitalId.Stamina].Max)*100) ..")" end
@@ -280,6 +292,12 @@ bars = {
   { name = "Mana",    color = 0xAAAA0000, icon = 0x060069EA,
       windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,  
       textAlignment="center", type = "progress",
+      stylevar={
+        { _imgui.ImGuiStyleVar.FrameBorderSize, 2}
+      },
+      styleColor={
+        {_imgui.ImGuiCol.Border, 0xFFFFFFFF}
+      },
       max  = function() return vitals[VitalId.Mana].Max end,
       value= function() return vitals[VitalId.Mana].Current end,
       text = function() return "  "..vitals[VitalId.Mana].Current .." / " .. vitals[VitalId.Mana].Max end--.. " (" .. string.format("%.0f%%%%",(vitals[VitalId.Mana].Current)/(vitals[VitalId.Mana].Max)*100) ..")" end

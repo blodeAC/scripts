@@ -219,6 +219,7 @@ for i, bar in ipairs(bars) do
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FramePadding, zeroVector)
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemSpacing, zeroVector)
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, zeroVector)
+    
     if firstUse then
       ImGui.SetNextWindowSize(barSizes[i] or Vector2.new(200, 30))
       ImGui.SetNextWindowPos(barPositions[i] or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
@@ -250,13 +251,11 @@ for i, bar in ipairs(bars) do
       local fontScale = bar.fontScale or 1
       ImGui.SetWindowFontScale(fontScale)
 
-      -- Apply border styles conditionally based on the setting at the top of the script.
-      if borderSize > 0 then
-        ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FrameBorderSize, borderSize)
-        ImGui.PushStyleColor(_imgui.ImGuiCol.Border, borderColor)
+      for _, style in ipairs(bar.stylevar or {}) do
+        ImGui.PushStyleVar(style[1], style[2])
       end
-      for stylevar, style in ipairs(bar.stylevar or {}) do
-        ImGui.PushStyleVar(stylevar, style)
+      for _,color in ipairs(bar.styleColor or {}) do
+        ImGui.PushStyleColor(color[1],color[2])
       end
 
       if bar.type == "progress" then
@@ -290,12 +289,11 @@ for i, bar in ipairs(bars) do
         bar.render(bar)
       end
 
-      for stylevar, style in ipairs(bar.stylevar or {}) do
-        ImGui.PopStyleVar()
-      end
-      if borderSize > 0 then
-        ImGui.PopStyleVar()
+      for _,__ in ipairs(bar.styleColor or {}) do
         ImGui.PopStyleColor()
+      end
+      for _, __ in ipairs(bar.stylevar or {}) do
+        ImGui.PopStyleVar()
       end
 
       -- Save position/size when Ctrl is pressed.

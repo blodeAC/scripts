@@ -39,7 +39,7 @@ end
 
 -- Set HUD properties.
 local targetHud = views.Huds.CreateHud("Selection")
-targetHud.Visible = true
+targetHud.Visible = false
 targetHud.ShowInBar = true
 targetHud.WindowSettings = targetHudConfig.windowSettings or targetHud.WindowSettings 
 
@@ -97,13 +97,11 @@ targetRender = function()
     local fontScale = targetHudConfig.fontScale or 1
     ImGui.SetWindowFontScale(fontScale)
 
-    -- Apply border styles conditionally based on the setting at the top of the script.
-    if targetHudConfig.borderSize and targetHudConfig.borderSize > 0 then
-      ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FrameBorderSize, targetHudConfig.borderSize)
-      ImGui.PushStyleColor(_imgui.ImGuiCol.Border, targetHudConfig.borderColor)
+    for _, style in ipairs(targetHudConfig.stylevar or {}) do
+      ImGui.PushStyleVar(style[1], style[2])
     end
-    for stylevar, style in ipairs(targetHudConfig.stylevar or {}) do
-      ImGui.PushStyleVar(stylevar, style)
+    for _,color in ipairs(targetHudConfig.styleColor or {}) do
+      ImGui.PushStyleColor(color[1],color[2])
     end
 
     ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, targetHudConfig.color)
@@ -122,13 +120,13 @@ targetRender = function()
 
     ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
     
-    for stylevar, style in ipairs(targetHudConfig.stylevar or {}) do
-      ImGui.PopStyleVar()
-    end
-    if targetHudConfig.borderSize > 0 then
-      ImGui.PopStyleVar()
+    for _,__ in ipairs(targetHudConfig.styleColor or {}) do
       ImGui.PopStyleColor()
     end
+    for _, __ in ipairs(targetHudConfig.stylevar or {}) do
+      ImGui.PopStyleVar()
+    end
+
 
     -- Save position/size when Ctrl is pressed.
     if ImGui.GetIO().KeyCtrl then
