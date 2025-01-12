@@ -260,7 +260,6 @@ end
 
 -- BARS
 local bars = {}
-
 bars = {  
   { name = "Health",  color = 0xAA0000AA, icon = 0x060069E9,
       windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground, 
@@ -651,6 +650,56 @@ bars = {
       end)
     end,
     render = renderMobPointer
+  },
+  { name="BlueAetheria",
+    fontScale=2,
+    init=function(bar)
+      local function scan()
+        for _,item in ipairs(game.Character.Equipment) do
+          bar.id=nil
+          if item.Value(IntId.CurrentWieldedLocation)==EquipMask[bar.name] then
+            bar.id=item.Id
+            break
+          end
+        end
+      end
+      scan()
+      game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
+        bar.cooldown=cooldownChanged.Cooldown.ExpiresAt
+      end)
+      game.Messages.Incoming.Qualities_UpdateInstanceID.Add(function(updateInstance)
+        local objectId=updateInstance.Data.ObjectId
+        local weenie=game.World.Get(objectId)
+        if not weenie or weenie.Value(IntId.ValidLocations)~=EquipMask[bar.name] then
+          return
+        elseif updateInstance.Data.Key==InstanceId.Container and updateInstance.Data.Value==game.CharacterId then
+          sleep(100)
+          scan()
+        elseif (updateInstance.Data.Key==InstanceId.Wielder and updateInstance.Data.Value==0) then
+          sleep(100)
+          scan()
+        end
+      end)
+    end,
+    render = function(bar)
+      if bar.id and game.World.Exists(bar.id) then
+        if bar.cooldown then
+          local rem=(bar.cooldown - DateTime.UtcNow).TotalSeconds
+          if rem>0 then
+            bar.label=string.format("%.1f",rem)
+          else
+            bar.cooldown=nil
+            bar.label=nil
+          end
+        end
+        local aetheria=game.World.Get(bar.id)
+        local icon=aetheria.Value(DataId.Icon)
+        DrawIcon(bar,icon)
+      else
+        DrawIcon(bar,0x06006C0A)
+      end
+    end,
   }
 }
+
 return bars

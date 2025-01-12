@@ -39,12 +39,19 @@ function GetOrCreateTexture(textureId)
   return textures[textureId]
 end
 
-function DrawIcon(bar)
+function DrawIcon(bar,overrideId)
+  --print(overrideId)
   local size = bar.size
   if not bar.size then 
-    size = ImGui.GetContentRegionAvail()
+    size = ImGui.GetWindowContentRegionMax()
   end
-  if ImGui.TextureButton(tostring(bar.id), GetOrCreateTexture(bar.icon), size) then
+  if overrideId then
+    local texture=GetOrCreateTexture(overrideId)
+    if not texture then return end
+    if ImGui.TextureButton(tostring(overrideId), texture, size) then
+      
+    end
+  elseif ImGui.TextureButton(tostring(bar.id), GetOrCreateTexture(bar.icon), size) then
     bar:func()
   end
 
@@ -57,9 +64,11 @@ function DrawIcon(bar)
     rectMin.X + (rectMax.X - rectMin.X - textSize.X) / 2,
     rectMin.Y + (rectMax.Y - rectMin.Y - textSize.Y) / 2
   )
-
+  if overrideId and bar.label then
+    drawlist.AddRectFilled(rectMin,rectMax,0x88000000)
+  end
   -- Draw text in white
-  drawlist.AddText(startText, 0xFFFFFFFF, bar.label or " ")
+  drawlist.AddText(startText, 0xFFFFFFFF, bar.label or "")
 end
 
 ----------------------------------------
@@ -295,7 +304,7 @@ for i, bar in ipairs(bars) do
       for _, __ in ipairs(bar.stylevar or {}) do
         ImGui.PopStyleVar()
       end
-
+      
       -- Save position/size when Ctrl is pressed.
       if ImGui.GetIO().KeyCtrl then
         local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize())
