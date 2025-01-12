@@ -28,11 +28,11 @@ config = {
       }
       rightText={
         blankLine,
-        target.maxHp and tostring(math.floor(target.hp*target.maxHp+0.5)) .. " / " .. tostring(target.maxHp) or " "
+        target.maxHp and ((tostring(math.floor(target.hp*target.maxHp+0.5)) .. " / " .. tostring(target.maxHp)) .. " ") or (tostring(math.floor(target.hp*100)) .. "%%")
       }
       leftText={
         blankLine,
-        "  " .. tostring(game.World.Get(target.id).Value(IntId.Level))
+        tostring(game.World.Get(target.id).Value(IntId.Level))~="0" and ("  "..tostring(game.World.Get(target.id).Value(IntId.Level))) or "  ??"
       }
       for i,text in ipairs(leftText) do
         local textSize=ImGui.CalcTextSize(text)

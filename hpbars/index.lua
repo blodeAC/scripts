@@ -9,7 +9,6 @@ local init = function()
   targetHud = require("targetFrame")
 
   wobjects_hp={}
-  
   -- Metatable for wobject to define health bar related methods
   local wobjectMeta = {
     -- Method to calculate offset coordinates based on angle and scalar
@@ -37,13 +36,12 @@ local init = function()
       if offset == nil then return end
       self.hpbar.OrientToCoords(acclient.Coordinates.Me.NS + offset["NS"], acclient.Coordinates.Me.EW + offset["EW"], 1,
         false)
-      self.hpbar.Visible = true
       self.hpText.OrientToCoords(acclient.Coordinates.Me.NS, acclient.Coordinates.Me.EW, 1, false)
     end,
 
     -- Method to anchor the health bar to the wobject
-    anchorHpBar = function(self, init)
-      if (game.World.Selected and game.World.Selected.Id==self.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp) then
+    anchorHpBar = function(self, init)    --always chase this with "wobjects_hp[id].redbar.Visible=true" & "wobjects_hp[id].hpbar.Visible=true" to show, since various other things manage vis
+      if (game.World.Selected and game.World.Selected.Id==self.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp) or self.hp==0 then
         return
       else
         local offset = self:getOffsetCoordinates(90, 1 - self.hp)
@@ -52,9 +50,6 @@ local init = function()
           self.redbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, 0, 0, -0.25)
           self.redbar.OrientToPlayer(false)
         end
-        self.redbar.Visible = true
-
-        self.hpbar.Visible = true
         self.hpbar.Anchor(self.id, self.height + self.ticker.ScaleY / 2, offset["NS"], offset["EW"], -0.25)
         self.hpbar.ScaleX = self.hp
 
@@ -64,7 +59,6 @@ local init = function()
           self:orientHpBar()
         else
           self.hpbar.OrientToPlayer(false)
-          self.hpbar.Visible = true
         end
       end
     end
@@ -114,8 +108,10 @@ local init = function()
       wobject.redbar.ScaleZ = 0.1
       wobject.redbar.Color = 0x80FF0000
       wobject.redbar.OrientToCamera(false)
-
+      
       wobject:anchorHpBar(true)
+      wobject.hpbar.Visible = true
+      wobject.redbar.Visible = true
 
       -- Store wobject by its ID
       self[wobject.id] = wobject
@@ -300,6 +296,17 @@ local init = function()
     end
   end)
 
+  game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
+    local objectId=movementEvent.Data.ObjectId
+    local motion=movementEvent.Data.MovementData.State
+    local dead=(motion and motion.ForwardCommand==MotionCommand.Dead)
+    if (wobjects_hp[objectId] and dead) then
+      wobjects_hp[objectId].hp=0
+      wobjects_hp[objectId].redbar.Visible = false
+      wobjects_hp[objectId].hpbar.Visible = false
+    end
+  end)
+
   --wipe out text on deselect
   game.World.OnObjectSelected.Add(function(e)
     if lastSelected ~= nil then
@@ -378,13 +385,16 @@ local init = function()
   local function positionChanged(e)
     for _, wobject in pairs(wobjects_hp) do
       ---@diagnostic disable
-      local coords=nil
+      local coords = nil
       if game.World.Exists(wobject.id) then coords=acclient.Movement.GetPhysicsCoordinates(wobject.id) end
-      if coords and acclient.Coordinates.Me.DistanceTo(coords)>(config.maxDistanceForVisibility or math.huge) then
+      if ((coords and acclient.Coordinates.Me.DistanceTo(coords)>(config.maxDistanceForVisibility or math.huge)) or
+         (game.World.Selected and game.World.Selected.Id==wobject.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp)) then
         wobject.hpbar.Visible=false
         wobject.redbar.Visible=false
-      else
+      elseif wobject.hp~=0 then
         wobject:anchorHpBar()
+        wobject.hpbar.Visible=true
+        wobject.redbar.Visible=true
       end
       ---@diagnostic enable
     end

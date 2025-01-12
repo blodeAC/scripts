@@ -43,7 +43,7 @@ function DrawIcon(bar,overrideId)
   --print(overrideId)
   local size = bar.size
   if not bar.size then 
-    size = ImGui.GetWindowContentRegionMax()
+    size = ImGui.GetContentRegionAvail()
   end
   if overrideId then
     local texture=GetOrCreateTexture(overrideId)

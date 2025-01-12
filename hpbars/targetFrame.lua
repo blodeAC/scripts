@@ -1,42 +1,12 @@
 local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
+local acclient = require("acclient")
 local targetHudConfig = config.targetHudConfig
 
 -------------------------------------------------
 --- IMGUI for TARGETHUD
 -------------------------------------------------
-function imguiAligner(config, text, start, size)
-  -- Default to current cursor position and content region if not provided
-  start = start or ImGui.GetCursorScreenPos() or Vector2.new(0, 0) -- Ensure it's not nil
-  size = size or ImGui.GetContentRegionAvail()
-
-  -- Calculate the size of the text to align
-  local textSize = ImGui.CalcTextSize(text)
-  for _ in string.gmatch(text, "%.") do
-    textSize.X = textSize.X - ImGui.GetFontSize() / 2
-  end
-
-  -- Calculate the X position to center the text, and ensure it doesn't overflow
-  local textX
-  if config.textAlignment == "left" then
-    textX = start.X -- Align text to the left
-  elseif config.textAlignment == "center" or config.textAlignment == nil then
-    -- Center the text horizontally, considering the available space
-    textX = start.X + (size.X - textSize.X) / 2
-    -- Ensure textX doesn't go below the start.X
-    textX = math.max(textX, start.X)
-  elseif config.textAlignment == "right" then
-    textX = start.X + size.X - textSize.X -- Align text to the right
-  end
-
-  -- Calculate the Y position to center the text vertically
-  local textY = start.Y + (size.Y - textSize.Y) / 2
-
-  -- Set the cursor to the calculated position
-  ImGui.SetCursorScreenPos(Vector2.new(textX, textY))
-end
-
 -- Set HUD properties.
 local targetHud = views.Huds.CreateHud("Selection")
 targetHud.Visible = false
@@ -152,8 +122,12 @@ game.World.OnObjectSelected.Add(function(objSelectionEvent)
   targetHud.OnPreRender.Remove(targetPrerender)
   targetHud.OnRender.Remove(targetRender)
   if lastMob and game.World.Exists(lastMob.id) then
-    lastMob.redbar.Visible = true
-    lastMob.hpbar.Visible=true
+    local coords=nil
+    if game.World.Exists(lastMob.id) then coords=acclient.Movement.GetPhysicsCoordinates(lastMob.id) end
+    if coords and (acclient.Coordinates.Me.DistanceTo(coords)<(config.maxDistanceForVisibility or math.huge)) and (lastMob and lastMob.hp~=0) then
+      lastMob.redbar.Visible = true
+      lastMob.hpbar.Visible = true
+    end
   end
   if wobjects_hp[objSelectionEvent.ObjectId]~=nil then
     targetHud.OnPreRender.Add(targetPrerender)
