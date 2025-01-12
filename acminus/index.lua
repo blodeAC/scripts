@@ -189,14 +189,14 @@ local function init()
     xpRider = xpRider + e.TotalExperience - e.OldTotalExperience
   end)
 
-game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
-  local objectId=movementEvent.Data.ObjectId
-  local motion=movementEvent.Data.MovementData.State
-  local dead=(motion and motion.ForwardCommand==MotionCommand.Dead)
-  if (game.World.Selected and game.World.Selected.Id==objectId and dead) then
-    getNextCombatTarget()
-  end
-end)
+  game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
+    local objectId=movementEvent.Data.ObjectId
+    local motion=movementEvent.Data.MovementData.State
+    local dead=(motion and motion.ForwardCommand==MotionCommand.Dead)
+    if (game.World.Selected and game.World.Selected.Id==objectId and dead) then
+      getNextCombatTarget()
+    end
+  end)
   game.Messages.Incoming.Combat_HandleVictimNotificationEventOther.Add(function(e)
     if game.World.Selected == nil or game.World.Selected.Container ~= nil then
       getNextCombatTarget()
@@ -416,7 +416,12 @@ end)
         -- Second Column: Name
         ImGui.TableSetColumnIndex(1)
         columnWidths[2] = ImGui.GetContentRegionAvail().X
-        ImGui.Text(game.World.Get(corpse).Name)
+        local weenie=game.World.Get(corpse)
+        if weenie then
+          ImGui.Text(weenie.Name)
+        else
+          ImGui.Text("Temporary error?")
+        end
 
         -- Third Column: Time
         ImGui.TableSetColumnIndex(2)
