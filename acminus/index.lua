@@ -193,7 +193,7 @@ game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
   local objectId=movementEvent.Data.ObjectId
   local motion=movementEvent.Data.MovementData.State
   local dead=(motion and motion.ForwardCommand==MotionCommand.Dead)
-  if (game.World.Selected.Id==objectId and dead) then
+  if (game.World.Selected and game.World.Selected.Id==objectId and dead) then
     getNextCombatTarget()
   end
 end)
