@@ -38,6 +38,9 @@ function DrawIcon(bar,overrideId,size,func)
   elseif ImGui.TextureButton("##"..randIdBadIdea, GetOrCreateTexture(bar.icon), size) then
     bar:func()
   end
+  if ImGui.IsItemClicked(1) and bar.rightclick then
+    bar:rightclick()
+  end
 
   local drawlist = ImGui.GetWindowDrawList()
   local rectMin = ImGui.GetItemRectMin()
@@ -58,8 +61,6 @@ end
 ----------------------------------------
 --- Settings Saving/Loading
 ----------------------------------------
-local barPositions = {}
-local barSizes = {}
 
 -- Load settings from a JSON file
 function loadSettings()
@@ -71,13 +72,12 @@ function loadSettings()
       local characterSettings = settings[game.ServerName][game.Character.Weenie.Name]
       for i, bar in ipairs(bars) do
         if characterSettings[bar.name] then
-          barPositions[i] = Vector2.new(characterSettings[bar.name].position.X, characterSettings[bar.name].position.Y)
-          barSizes[i] = Vector2.new(characterSettings[bar.name].size.X, characterSettings[bar.name].size.Y)
-        end
-        bar.hide = characterSettings[bar.name] and characterSettings[bar.name].hide or false
-        for key, value in pairs(characterSettings[bar.name]) do
-          if key~="position" and key~="size" and key~="hide" then
-            bar[key]=value
+          for key, value in pairs(characterSettings[bar.name]) do
+            if type(value)=="table" and value.X and value.Y then
+              bar[key]=Vector2.new(value.X,value.Y)
+            else
+              bar[key]=value
+            end
           end
         end
       end
@@ -139,13 +139,7 @@ function SaveBarSettings(barSaving,...)
   end
 
   settings[game.ServerName][game.Character.Weenie.Name] = settings[game.ServerName][game.Character.Weenie.Name]
-  for i, bar in ipairs(bars) do
-    if barPositions[i] and barSizes[i] then
-      settings[game.ServerName][game.Character.Weenie.Name][bar.name].position = { X = barPositions[i].X, Y = barPositions[i].Y }
-      settings[game.ServerName][game.Character.Weenie.Name][bar.name].size = { X = barSizes[i].X, Y = barSizes[i].Y }
-      settings[game.ServerName][game.Character.Weenie.Name][bar.name].hide = bar.hide or false
-    end
-  end
+
   if args then
     for i=1,args.n do
       if i%2==0 then
@@ -223,7 +217,7 @@ for i, bar in ipairs(bars) do
   huds[i].Visible = not bar.hide
   huds[i].ShowInBar = true
 
-  local firstUse = true
+  bar.imguiReset = true
   -- Pre-render setup for each HUD.
   huds[i].OnPreRender.Add(function()
     local zeroVector = Vector2.new(0, 0)
@@ -233,22 +227,29 @@ for i, bar in ipairs(bars) do
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemSpacing, zeroVector)
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, zeroVector)
     
-    if firstUse then
-      ImGui.SetNextWindowSize(barSizes[i] or Vector2.new(200, 30))
-      ImGui.SetNextWindowPos(barPositions[i] or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
-      firstUse = false
+    if bar.imguiReset then
+      if bar.renderContext==nil then
+        ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(200, 30))
+        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
+      else
+        ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(200, 30))
+        ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
+      end
+      bar.imguiReset = false
     end
 
     -- Set flags to disable all unnecessary decorations.
     if ImGui.GetIO().KeyCtrl then
       huds[i].WindowSettings =
-          _imgui.ImGuiWindowFlags.NoScrollbar
+          _imgui.ImGuiWindowFlags.NoScrollbar +
+          _imgui.ImGuiWindowFlags.NoCollapse
     else
       huds[i].WindowSettings =
           _imgui.ImGuiWindowFlags.NoTitleBar +
           _imgui.ImGuiWindowFlags.NoScrollbar + -- Prevent scrollbars explicitly.
           _imgui.ImGuiWindowFlags.NoMove +      -- Prevent moving unless Ctrl is pressed.
           _imgui.ImGuiWindowFlags.NoResize +    -- Prevent resizing unless Ctrl is pressed.
+          _imgui.ImGuiWindowFlags.NoCollapse +
           (bar.windowSettings or 0)
     end
   end)
@@ -287,12 +288,14 @@ for i, bar in ipairs(bars) do
         ImGui.Text(text)
 
         ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
+
       elseif bar.type == "button" then
         if bar.icon then
           DrawIcon(bar)
         elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
           bar:func()
         end
+
       elseif bar.type == "text" then
         ---@diagnostic disable-next-line
         local text = bar:text()
@@ -313,15 +316,18 @@ for i, bar in ipairs(bars) do
       if ImGui.GetIO().KeyCtrl then
         local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize()/fontScale)
         local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize()/fontScale)
-
-        if currentPos.X ~= (barPositions[i] and barPositions[i].X or -1) or
-            currentPos.Y ~= (barPositions[i] and barPositions[i].Y or -1) or
-            currentContentSize.X ~= (barSizes[i] and barSizes[i].X or -1) or
-            currentContentSize.Y ~= (barSizes[i] and barSizes[i].Y or -1) then
-          barPositions[i] = currentPos
-          barSizes[i] = Vector2.new(currentContentSize.X, currentContentSize.Y)
-
-          SaveBarSettings()
+        if currentPos.X ~= (bar.position and bar.position.X or -1) or
+            currentPos.Y ~= (bar.position and bar.position.Y or -1) or
+            currentContentSize.X ~= (bar.size and bar.size.X or -1) or
+            currentContentSize.Y ~= (bar.size and bar.size.Y or -1) then
+          bar.position = currentPos
+          bar.size = currentContentSize
+          if bar.renderContext~=nil then
+            bar[bar.renderContext]={position=bar.position,size=bar.size}
+            SaveBarSettings(bar,bar.renderContext,{position={X=bar.position.X,Y=bar.position.Y},size={X=bar.size.X,Y=bar.size.Y}})
+          else 
+            SaveBarSettings(bar, "position",{X=bar.position.X,Y=bar.position.Y},"size", {X=bar.size.X,Y=bar.size.Y})
+          end
         end
       end
     end

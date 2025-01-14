@@ -241,6 +241,9 @@ bars = {
           end)
         end
       end)
+    end,
+    rightclick = function(bar)
+      bar.sortBag=nil
     end
   },
 
@@ -250,7 +253,8 @@ bars = {
       bar:func() 
     end,
     func = function(bar)
-      sortbag(bar,"trophies",game.Character,function()
+      sortbag(bar,"trophies",game.Character,
+      function() --left click
         local count=1
         local function stash(item)
           if item.ContainerId~=bar.sortBag and string.find(item.Value(StringId.Use),"A Trophy Collector or Trophy Smith may be interested in this.") then
@@ -273,9 +277,12 @@ bars = {
           end
         end
       end)
+    end,
+    rightclick = function(bar)
+        bar.sortBag=nil
     end
   },
-  {name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "S    \n\n",
+  { name = "sort_salvagebag", type = "button", icon=0x060011F7,  label = "S    \n\n",
     text = function(bar) return "Salvage" end,
     init = function(bar) 
       bar:func()
@@ -291,6 +298,9 @@ bars = {
           end
         end
       end)
+    end,
+    rightclick = function(bar)
+      bar.sortBag=nil
     end
   },
   { name = "sort_gembag", type = "button", icon=0x060011F7, label = "G    \n\n",
@@ -309,25 +319,31 @@ bars = {
           end
         end
       end)
+    end,
+    rightclick = function(bar)
+      bar.sortBag=nil
     end
   },
   { name = "sort_compbag", type = "button", icon=0x060011F7, label = "C    \n\n",
-  text = function(bar) return "C" end,
-  init = function(bar) 
-    bar:func()
-  end,
-  func = function(bar)
-    sortbag(bar,"comps",game.Character, function()
-      local count=1
-      for i,item in ipairs(game.Character.Inventory) do
-        local comp=(item.ObjectClass==ObjectClass.SpellComponent) and not string.find(item.Name,"Pea")
-        if comp and item.ContainerId~=bar.sortBag then
-          game.Actions.ObjectMove(item.Id,bar.sortBag,0,false,stagger(count),genericActionCallback)
-          count=count+1
+    text = function(bar) return "C" end,
+    init = function(bar) 
+      bar:func()
+    end,
+    func = function(bar)
+      sortbag(bar,"comps",game.Character, function()
+        local count=1
+        for i,item in ipairs(game.Character.Inventory) do
+          local comp=(item.ObjectClass==ObjectClass.SpellComponent) and not string.find(item.Name,"Pea")
+          if comp and item.ContainerId~=bar.sortBag then
+            game.Actions.ObjectMove(item.Id,bar.sortBag,0,false,stagger(count),genericActionCallback)
+            count=count+1
+          end
         end
-      end
-    end)
-  end
+      end)
+    end,
+    rightclick = function(bar)
+      bar.sortBag=nil
+    end
   },
   { name = "sort_vendorbag", type = "button", icon=0x060011F7, label = "V    \n\n",
     text = function(bar) return "V" end,
@@ -345,6 +361,9 @@ bars = {
           end
         end
       end)
+    end,
+    rightclick = function(bar)
+      bar.sortBag=nil
     end
   },
   { name = "attackpower", type = "button", icon=0x06006084,
@@ -390,6 +409,9 @@ bars = {
           end
         end
       end)
+    end,
+    rightclick = function(bar)
+      bar.sortBag=nil
     end
   },
   { name = "render_damageDealt",
@@ -734,7 +756,7 @@ bars = {
       {_imgui.ImGuiStyleVar.FramePadding,Vector2.new(2,2)},
       {_imgui.ImGuiStyleVar.ItemSpacing,Vector2.new(2,2)}
     },
-    init = function(bar,firstUseNil)
+    init = function(bar)
       function table.contains(tbl, value)
         for _, v in pairs(tbl) do
             if v == value then
@@ -822,7 +844,6 @@ bars = {
       end
 
       bar.profiles=bar.profiles or {}
-      bar.currentRenderFunc=bar.currentRenderFunc or bar.showProfiles
       
       bar.scan = function(bar)
         bar.slots={}
@@ -847,22 +868,21 @@ bars = {
       end
       bar:scan()
 
-      if firstUseNil==nil then
-        bar.watcher = function(updateInstance)
-          local objectId=updateInstance.Data.ObjectId
-          local weenie=game.World.Get(objectId)
-          if not weenie then
-            return
-          elseif updateInstance.Data.Key==InstanceId.Container and updateInstance.Data.Value==game.CharacterId then
-            sleep(500)
-            bar:scan()
-          elseif (updateInstance.Data.Key==InstanceId.Wielder) then
-            sleep(500)
-            bar:scan()
-          end
+      bar.watcher = function(updateInstance)
+        local objectId=updateInstance.Data.ObjectId
+        local weenie=game.World.Get(objectId)
+        if not weenie then
+          return
+        elseif updateInstance.Data.Key==InstanceId.Container and updateInstance.Data.Value==game.CharacterId then
+          sleep(500)
+          bar:scan()
+        elseif (updateInstance.Data.Key==InstanceId.Wielder) then
+          sleep(500)
+          bar:scan()
         end
-        game.Messages.Incoming.Qualities_UpdateInstanceID.Add(bar.watcher)
       end
+      game.Messages.Incoming.Qualities_UpdateInstanceID.Add(bar.watcher)
+
     end,
     resetRemembered = function(bar)
       bar.rememberedSlots={}
@@ -932,11 +952,15 @@ bars = {
         bar.activeProfile=profile
         SaveBarSettings(bar,"profiles",bar.profiles)        
         bar:resetRemembered()
+        bar.imguiReset=true
+        bar.renderContext="showProfilesCtx"
         bar.render=bar.showProfiles
       end
       ImGui.SameLine()
       if ImGui.Button("Don't Save",Vector2.new(ImGui.GetWindowWidth()/3-miscPadding.X,ImGui.GetTextLineHeight())+miscPadding) then
         bar:resetRemembered()
+        bar.imguiReset=true
+        bar.renderContext="showProfilesCtx"
         bar.render=bar.showProfiles
       end
       ImGui.SameLine()
@@ -950,6 +974,8 @@ bars = {
         bar.profiles=profilesCopy
         SaveBarSettings(bar,"profiles",bar.profiles)
         bar:resetRemembered()
+        bar.imguiReset=true
+        bar.renderContext="showProfilesCtx"
         bar.render=bar.showProfiles
       end
     end,
@@ -978,12 +1004,14 @@ bars = {
       
       -- Only add NewLine if the input is not active
       if not isInputActive and (bar.profileName=="") then
-        ImGui.Text(" ")
+        ImGui.NewLine()
       end
 
       ImGui.PushStyleColor(_imgui.ImGuiCol.Button,0xFF333333)
       if ImGui.Button((bar.edit or "Create Profile") .. "##attemptNewProfile",Vector2.new(windowSize.X,ImGui.GetTextLineHeight())+miscPadding) then
         if bar.profileName~="" then
+          bar.imguiReset=true
+          bar.renderContext="showGearCtx"
           bar.render=bar.showGear
         else
           print("Invalid profile name")
@@ -1036,9 +1064,10 @@ bars = {
       end
     end,
     render = function(bar)
-      bar.currentRenderFunc(bar)
+      bar.renderContext="showProfilesCtx"
+      bar:showProfiles()
     end
-  }--]]
+  }
 }
 
 return bars
