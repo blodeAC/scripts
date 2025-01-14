@@ -26,8 +26,8 @@ local function init()
 
   local genericActionOpts=ActionOptions.new()
   ---@diagnostic disable
-  genericActionOpts.MaxRetryCount=0
-  genericActionOpts.TimeoutMilliseconds=1
+  genericActionOpts.MaxRetryCount=1
+  genericActionOpts.TimeoutMilliseconds=100
   ---@diagnostic enable
 
   ----------------------------------------
@@ -442,7 +442,7 @@ local function init()
 
       ImGui.EndTable()
     end
-
+    
     -- Keypress handling
     if ImGui.IsKeyPressed(config.LOOTING_HOTKEY, false) and not hkLockout then
       hkLockout = true

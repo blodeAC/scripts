@@ -22,19 +22,20 @@ function GetOrCreateTexture(textureId)
   return textures[textureId]
 end
 
-function DrawIcon(bar,overrideId)
+function DrawIcon(bar,overrideId,size,func)
   --print(overrideId)
-  local size = bar.size
-  if not bar.size then 
+  if not size then 
     size = ImGui.GetContentRegionAvail()
   end
+
+  local randIdBadIdea=ImGui.GetCursorScreenPos().X*ImGui.GetCursorScreenPos().Y
   if overrideId then
     local texture=GetOrCreateTexture(overrideId)
     if not texture then return end
-    if ImGui.TextureButton(tostring(overrideId), texture, size) then
-      
+    if ImGui.TextureButton("##"..randIdBadIdea, texture, size) then
+      func()
     end
-  elseif ImGui.TextureButton(tostring(bar.id), GetOrCreateTexture(bar.icon), size) then
+  elseif ImGui.TextureButton("##"..randIdBadIdea, GetOrCreateTexture(bar.icon), size) then
     bar:func()
   end
 
@@ -61,7 +62,7 @@ local barPositions = {}
 local barSizes = {}
 
 -- Load settings from a JSON file
-local function loadSettings()
+function loadSettings()
   local files = io.FileExists(settingsFile)
   if files then
     local content = io.ReadText(settingsFile)
@@ -74,6 +75,11 @@ local function loadSettings()
           barSizes[i] = Vector2.new(characterSettings[bar.name].size.X, characterSettings[bar.name].size.Y)
         end
         bar.hide = characterSettings[bar.name] and characterSettings[bar.name].hide or false
+        for key, value in pairs(characterSettings[bar.name]) do
+          if key~="position" and key~="size" and key~="hide" then
+            bar[key]=value
+          end
+        end
       end
     end
   end
@@ -107,15 +113,24 @@ local function prettyPrintJSON(value, indent)
   end
 end
 
--- Save settings to a JSON file with prettification (indentation)
-local function saveSettings()
+-- Save settings to a JSON file with prettification (indentation). Variable arguments passed as SaveBarSettings(bar,key,value,key2,value2,...)
+function SaveBarSettings(barSaving,...)
+  local args
+  args=table.pack(...)
+  if arg~=nil then
+    if args.n~=0 and args.n%2==1 then
+      print("Invalid number of arguments to save. Must be even")
+      return
+    end
+  end
+
   local settings = {}
   local files = io.FileExists(settingsFile)
   if files then
     local content = io.ReadText(settingsFile)
     settings = json.parse(content) or {}
   end
-
+  
   if not settings[game.ServerName] then
     settings[game.ServerName] = {}
   end
@@ -123,13 +138,19 @@ local function saveSettings()
     settings[game.ServerName][game.Character.Weenie.Name] = {}
   end
 
+  settings[game.ServerName][game.Character.Weenie.Name] = settings[game.ServerName][game.Character.Weenie.Name]
   for i, bar in ipairs(bars) do
     if barPositions[i] and barSizes[i] then
-      settings[game.ServerName][game.Character.Weenie.Name][bar.name] = {
-        position = { X = barPositions[i].X, Y = barPositions[i].Y },
-        size = { X = barSizes[i].X, Y = barSizes[i].Y }
-      }
+      settings[game.ServerName][game.Character.Weenie.Name][bar.name].position = { X = barPositions[i].X, Y = barPositions[i].Y }
+      settings[game.ServerName][game.Character.Weenie.Name][bar.name].size = { X = barSizes[i].X, Y = barSizes[i].Y }
       settings[game.ServerName][game.Character.Weenie.Name][bar.name].hide = bar.hide or false
+    end
+  end
+  if args then
+    for i=1,args.n do
+      if i%2==0 then
+        settings[game.ServerName][game.Character.Weenie.Name][barSaving.name][args[i-1]]=args[i]
+      end
     end
   end
 
@@ -190,12 +211,12 @@ for i, bar in ipairs(bars) do
   huds[i].OnHide.Add(function()
     bar.hide = true
     huds[i].Visible = false
-    saveSettings()
+    SaveBarSettings()
   end)
   huds[i].OnShow.Add(function()
     bar.hide = false
     huds[i].Visible = true
-    saveSettings()
+    SaveBarSettings()
   end)
 
   -- Set HUD properties.
@@ -236,7 +257,7 @@ for i, bar in ipairs(bars) do
     bar:init()
     bar.init=nil
   end
-  
+
   -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
   huds[i].OnRender.Add(function()
     if ImGui.BeginChild(bar.name .. "##" .. i, Vector2.new(0, 0), false, huds[i].WindowSettings) then
@@ -267,7 +288,7 @@ for i, bar in ipairs(bars) do
 
         ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
       elseif bar.type == "button" then
-        if bar.id and bar.icon then
+        if bar.icon then
           DrawIcon(bar)
         elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
           bar:func()
@@ -300,7 +321,7 @@ for i, bar in ipairs(bars) do
           barPositions[i] = currentPos
           barSizes[i] = Vector2.new(currentContentSize.X, currentContentSize.Y)
 
-          saveSettings()
+          SaveBarSettings()
         end
       end
     end
