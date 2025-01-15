@@ -234,7 +234,6 @@ for i, bar in ipairs(bars) do
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, zeroVector)
     
     if bar.imguiReset then
-      if bar.renderContext~=nil then print(bar.renderContext) end
       if bar.renderContext==nil then
         ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(200, 30))
         ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
