@@ -724,10 +724,10 @@ bars = {
         if not weenie or weenie.Value(IntId.ValidLocations)~=EquipMask[bar.name] then
           return
         elseif updateInstance.Data.Key==InstanceId.Container and updateInstance.Data.Value==game.CharacterId then
-          sleep(100)
+          sleep(333)
           scan()
         elseif (updateInstance.Data.Key==InstanceId.Wielder and updateInstance.Data.Value==0) then
-          sleep(100)
+          sleep(333)
           scan()
         end
       end)
@@ -805,61 +805,55 @@ bars = {
       end
       
       bar.equipMask={}
-      table.insert(bar.equipMask,1,EquipMask.Necklace)
-      table.insert(bar.equipMask,2,EquipMask["Trinket"])
-      table.insert(bar.equipMask,3,EquipMask.LeftBracelet)
-      table.insert(bar.equipMask,4,EquipMask.LeftRing)
-      table.insert(bar.equipMask,5,EquipMask.Shield)
-      table.insert(bar.equipMask,6,EquipMask.None)
-      table.insert(bar.equipMask,7,EquipMask.UpperArms)
-      table.insert(bar.equipMask,8,EquipMask.LowerArms)
-      table.insert(bar.equipMask,9,EquipMask.Hands)
-      table.insert(bar.equipMask,10,EquipMask.None)
-      table.insert(bar.equipMask,11,EquipMask.Head)
-      table.insert(bar.equipMask,12,EquipMask.Chest)
-      table.insert(bar.equipMask,13,EquipMask.Abdomen)
-      table.insert(bar.equipMask,14,EquipMask.None)
-      table.insert(bar.equipMask,15,EquipMask.None)
-      table.insert(bar.equipMask,16,EquipMask["BlueAetheria"])
-      table.insert(bar.equipMask,17,EquipMask.None)
-      table.insert(bar.equipMask,18,EquipMask.UpperLegs)
-      table.insert(bar.equipMask,19,EquipMask.LowerLegs)
-      table.insert(bar.equipMask,20,EquipMask.Feet)
-      table.insert(bar.equipMask,21,EquipMask["YellowAetheria"])
-      table.insert(bar.equipMask,22,EquipMask.None)
-      table.insert(bar.equipMask,23,EquipMask.RightBracelet)
-      table.insert(bar.equipMask,24,EquipMask.RightRing)
-      table.insert(bar.equipMask,25,EquipMask.MeleeWeapon)
-      table.insert(bar.equipMask,26,EquipMask["RedAetheria"])
-      table.insert(bar.equipMask,27,EquipMask.None) --?
-      table.insert(bar.equipMask,28,EquipMask.ChestUnderwear)
-      table.insert(bar.equipMask,29,EquipMask.UpperLegsUnderwear)
-      table.insert(bar.equipMask,30,EquipMask.Ammunition)
+      table.insert(bar.equipMask,1,"Necklace")
+      table.insert(bar.equipMask,2,"Trinket")
+      table.insert(bar.equipMask,3,"LeftBracelet")
+      table.insert(bar.equipMask,4,"LeftRing")
+      table.insert(bar.equipMask,5,"Shield")
+      table.insert(bar.equipMask,6,"None")
+      table.insert(bar.equipMask,7,"UpperArms")
+      table.insert(bar.equipMask,8,"LowerArms")
+      table.insert(bar.equipMask,9,"Hands")
+      table.insert(bar.equipMask,10,"None")
+      table.insert(bar.equipMask,11,"Head")
+      table.insert(bar.equipMask,12,"Chest")
+      table.insert(bar.equipMask,13,"Abdomen")
+      table.insert(bar.equipMask,14,"None")
+      table.insert(bar.equipMask,15,"None")
+      table.insert(bar.equipMask,16,"BlueAetheria")
+      table.insert(bar.equipMask,17,"None")
+      table.insert(bar.equipMask,18,"UpperLegs")
+      table.insert(bar.equipMask,19,"LowerLegs")
+      table.insert(bar.equipMask,20,"Feet")
+      table.insert(bar.equipMask,21,"YellowAetheria")
+      table.insert(bar.equipMask,22,"None")
+      table.insert(bar.equipMask,23,"RightBracelet")
+      table.insert(bar.equipMask,24,"RightRing")
+      table.insert(bar.equipMask,25,"MeleeWeapon")
+      table.insert(bar.equipMask,26,"RedAetheria")
+      table.insert(bar.equipMask,27,"None") --?
+      table.insert(bar.equipMask,28,"ChestUnderwear")
+      table.insert(bar.equipMask,29,"UpperLegsUnderwear")
+      table.insert(bar.equipMask,30,"Ammunition")
 
       bar.slots={}
       bar.rememberedSlots={}
-      for i=1,30,1 do 
-        table.insert(bar.slots,false)
-        table.insert(bar.rememberedSlots,false)
-      end
 
       bar.profiles=bar.profiles or {}
       
       bar.scan = function(bar)
         bar.slots={}
-        for i=1,30,1 do 
-          table.insert(bar.slots,false)
-        end
+
         for _,equipment in ipairs(game.Character.Equipment) do
-          for i,slot in ipairs(bar.equipMask) do
-            if slot~=EquipMask.None and equipment.CurrentWieldedLocation + slot == equipment.CurrentWieldedLocation then
-              bar.slots[i]=equipment
+          for i,slot in pairs(bar.equipMask) do
+            if slot~="None" and equipment.CurrentWieldedLocation + EquipMask[slot] == equipment.CurrentWieldedLocation then
+              bar.slots[slot]=equipment
             end
           end
         end
         if bar.activeProfile then
-          for i,gear in ipairs(bar.activeProfile.gear) do
-            if gear~=false and (bar.slots[i]==false or bar.slots[i].Id~=gear) then
+          for slot,gear in pairs(bar.activeProfile.gear) do
+            if (bar.slots[slot]==nil or bar.slots[slot].Id~=gear) then
               bar.activeProfile=nil
               break
             end
@@ -874,10 +868,34 @@ bars = {
         if not weenie then
           return
         elseif updateInstance.Data.Key==InstanceId.Container and updateInstance.Data.Value==game.CharacterId then
-          sleep(500)
+          local queueDetected
+          for _ in game.ActionQueue.ImmediateQueue do
+            queueDetected=true
+            break
+          end
+          for _ in game.ActionQueue.Queue do
+            queueDetected=true
+            break
+          end
+          if queueDetected then
+            print("still swapping")
+            return
+          end
           bar:scan()
         elseif (updateInstance.Data.Key==InstanceId.Wielder) then
-          sleep(500)
+          local queueDetected
+          for _ in game.ActionQueue.ImmediateQueue do
+            queueDetected=true
+            break
+          end
+          for _ in game.ActionQueue.Queue do
+            queueDetected=true
+            break
+          end
+          if queueDetected then
+            print("still swapping")
+            return
+          end
           bar:scan()
         end
       end
@@ -913,29 +931,30 @@ bars = {
           local startX=windowPos.X + (x-1)*cellSize.X
           local startY=windowPos.Y + (y-1)*cellSize.Y + (y>=shiftStart[x] and cellSize.Y/2 or 0)
           local start = Vector2.new(startX,startY)
-          if bar.equipMask[index]~=EquipMask.None then 
+          local slot=bar.equipMask[index]
+          if slot~="None" then 
             drawlist.AddRect(start,start+cellSize,0xFFFFFFFF) 
           end
           drawlist.AddRectFilled(start,start+cellSize,0x88000000)
 
-          local slottedItem=bar.slots[index]
+          local slottedItem=bar.slots[slot]
           if slottedItem then
             ImGui.SetCursorScreenPos(start)
             DrawIcon(bar,bar.GetItemTypeUnderlay(slottedItem),cellSize,function()
               if table.contains(bar.rememberedSlots,slottedItem.Id) then
-                bar.rememberedSlots[index]=false
+                bar.rememberedSlots[slot]=nil
               else
-                bar.rememberedSlots[index]=slottedItem.Id
+                bar.rememberedSlots[slot]=slottedItem.Id
               end
             end)
             ImGui.SetCursorScreenPos(start)
-            DrawIcon(bar,bar.slots[index].Value(DataId.Icon),cellSize)
+            DrawIcon(bar,bar.slots[slot].Value(DataId.Icon),cellSize)
             if table.contains(bar.rememberedSlots,slottedItem.Id) then
               drawlist.AddRectFilled(start,start+cellSize,0x8800FF00)
-            elseif bar.rememberedSlots[index] and slottedItem.Id~=bar.rememberedSlots[index] then
+            elseif bar.rememberedSlots[slot] and slottedItem.Id~=bar.rememberedSlots[slot] then
               drawlist.AddRectFilled(start,start+cellSize,0x880000FF)
             end
-          elseif bar.rememberedSlots[index] then
+          elseif bar.rememberedSlots[slot] then
             drawlist.AddRectFilled(start,start+cellSize,0x880000FF)
           end
         end
@@ -1034,29 +1053,26 @@ bars = {
         if ImGui.Button(profile.name.."##profile"..tostring(i),Vector2.new(windowSize.X,ImGui.GetTextLineHeight())+miscPadding) then
           bar.activeProfile=profile
           local count=1
-          for i=1,30 do
-            if profile.gear[i]~=false then
-              local gearId=profile.gear[i]
-              local profileEquipment=game.World.Get(gearId)
-              if profileEquipment~=nil then
-                local slotMask=bar.equipMask[i]
-                local wieldedItem=bar.slots[i]
-                if wieldedItem~=false and wieldedItem.Id~=profileEquipment.Id then
-                  game.Actions.ObjectMove(bar.slots[i].Id,game.CharacterId,0,false,stagger(count),function(objectMove)
-                    if not objectMove.Success and objectMove.Error~=ActionError.ItemAlreadyWielded then
-                      print("Fail! "..objectMove.ErrorDetails)
-                    else
-                      game.Actions.ObjectWield(profileEquipment.Id,slotMask,stagger(count,equipmentActionOpts),genericActionCallback)
-                    end
-                  end)
-                  count=count+1
-                else
-                  game.Actions.ObjectWield(profileEquipment.Id,slotMask,stagger(count,equipmentActionOpts),genericActionCallback)
-                  count=count+1
-                end
+          for slot,gearId in pairs(profile.gear) do
+            local profileEquipment=game.World.Get(gearId)
+            if profileEquipment~=nil then
+              local slotMask=EquipMask[slot]
+              local wieldedItem=bar.slots[slot]
+              if wieldedItem~=nil and wieldedItem.Id~=profileEquipment.Id then
+                game.Actions.ObjectMove(profileEquipment.Id,game.CharacterId,0,false,stagger(count),function(objectMove)
+                  if not objectMove.Success and objectMove.Error~=ActionError.ItemAlreadyWielded then
+                    print("Fail! "..objectMove.ErrorDetails)
+                  else
+                    game.Actions.ObjectWield(profileEquipment.Id,slotMask,stagger(count,equipmentActionOpts),genericActionCallback)
+                  end
+                end)
+                count=count+1
               else
-                print("Can't find " .. gearId .. " for slot " .. bar.equipMask[i])
+                game.Actions.ObjectWield(profileEquipment.Id,slotMask,stagger(count,equipmentActionOpts),genericActionCallback)
+                count=count+1
               end
+            else
+              print("Can't find " .. gearId .. " for slot " .. bar.equipMask[i])
             end
           end
           game.Messages.Incoming.Qualities_UpdateInstanceID.Add(bar.watcher)
