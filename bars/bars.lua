@@ -886,9 +886,9 @@ bars = {
     end,
     resetRemembered = function(bar)
       bar.rememberedSlots={}
-      for i=1,30,1 do 
-        table.insert(bar.rememberedSlots,false)
-      end
+      --for i=1,30,1 do 
+--        table.insert(bar.rememberedSlots,false)
+      --end
     end,
     showGear = function(bar)
       local style=ImGui.GetStyle()
@@ -954,6 +954,7 @@ bars = {
         bar:resetRemembered()
         bar.imguiReset=true
         bar.renderContext="showProfilesCtx"
+        bar.profileName=""
         bar.render=bar.showProfiles
       end
       ImGui.SameLine()
@@ -961,6 +962,7 @@ bars = {
         bar:resetRemembered()
         bar.imguiReset=true
         bar.renderContext="showProfilesCtx"
+        bar.profileName=""
         bar.render=bar.showProfiles
       end
       ImGui.SameLine()
@@ -976,6 +978,7 @@ bars = {
         bar:resetRemembered()
         bar.imguiReset=true
         bar.renderContext="showProfilesCtx"
+        bar.profileName=""
         bar.render=bar.showProfiles
       end
     end,
@@ -1029,7 +1032,7 @@ bars = {
       for _,profile in ipairs(bar.profiles) do
         local screenPos=ImGui.GetCursorScreenPos()
         if ImGui.Button(profile.name.."##profile"..tostring(i),Vector2.new(windowSize.X,ImGui.GetTextLineHeight())+miscPadding) then
-          bar.activeProfile=profile          
+          bar.activeProfile=profile
           local count=1
           for i=1,30 do
             if profile.gear[i]~=false then
@@ -1057,6 +1060,12 @@ bars = {
             end
           end
           game.Messages.Incoming.Qualities_UpdateInstanceID.Add(bar.watcher)
+        end
+        if ImGui.IsItemClicked(1) then
+          bar.profileName=profile.name
+          bar.imguiReset=true
+          bar.renderContext="showGearCtx"
+          bar.render=bar.showGear
         end
         if bar.activeProfile==profile then
           ImGui.GetWindowDrawList().AddRect(screenPos+Vector2.new(1,0),screenPos+Vector2.new(windowSize.X,ImGui.GetTextLineHeight()+miscPadding.Y)-Vector2.new(1,0),0xFF00FF00)
