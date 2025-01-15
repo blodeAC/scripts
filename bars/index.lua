@@ -149,6 +149,9 @@ function SaveBarSettings(barSaving,...)
   if args then
     for i=1,args.n do
       if i%2==0 then
+        if settings[game.ServerName][game.Character.Weenie.Name][barSaving.name]==nil then
+          settings[game.ServerName][game.Character.Weenie.Name][barSaving.name]={}
+        end
         settings[game.ServerName][game.Character.Weenie.Name][barSaving.name][args[i-1]]=args[i]
       end
     end
