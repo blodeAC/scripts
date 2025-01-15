@@ -868,32 +868,18 @@ bars = {
         if not weenie then
           return
         elseif updateInstance.Data.Key==InstanceId.Container and updateInstance.Data.Value==game.CharacterId then
-          local queueDetected
           for _ in game.ActionQueue.ImmediateQueue do
-            queueDetected=true
-            break
+            return
           end
           for _ in game.ActionQueue.Queue do
-            queueDetected=true
-            break
-          end
-          if queueDetected then
-            print("still swapping")
             return
           end
           bar:scan()
         elseif (updateInstance.Data.Key==InstanceId.Wielder) then
-          local queueDetected
           for _ in game.ActionQueue.ImmediateQueue do
-            queueDetected=true
-            break
+            return
           end
           for _ in game.ActionQueue.Queue do
-            queueDetected=true
-            break
-          end
-          if queueDetected then
-            print("still swapping")
             return
           end
           bar:scan()
