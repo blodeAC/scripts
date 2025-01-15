@@ -73,7 +73,13 @@ function loadSettings()
       for i, bar in ipairs(bars) do
         if characterSettings[bar.name] then
           for key, value in pairs(characterSettings[bar.name]) do
-            if type(value)=="table" and value.X and value.Y then
+            if type(value)=="table" and value.position and value.size then
+              bar[key]={}
+              bar[key].position=Vector2.new(value.position.X,value.position.Y)
+              bar[key].size=Vector2.new(value.size.X,value.size.Y)
+            elseif key=="position" then
+              bar[key]=Vector2.new(value.X,value.Y)
+            elseif key=="size" then
               bar[key]=Vector2.new(value.X,value.Y)
             else
               bar[key]=value
@@ -228,6 +234,7 @@ for i, bar in ipairs(bars) do
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, zeroVector)
     
     if bar.imguiReset then
+      if bar.renderContext~=nil then print(bar.renderContext) end
       if bar.renderContext==nil then
         ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(200, 30))
         ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
@@ -323,7 +330,7 @@ for i, bar in ipairs(bars) do
           bar.position = currentPos
           bar.size = currentContentSize
           if bar.renderContext~=nil then
-            bar[bar.renderContext]={position=bar.position,size=bar.size}
+            bar[bar.renderContext]={position=Vector2.new(bar.position.X,bar.position.Y),size=Vector2.new(bar.size.X,bar.size.Y)}
             SaveBarSettings(bar,bar.renderContext,{position={X=bar.position.X,Y=bar.position.Y},size={X=bar.size.X,Y=bar.size.Y}})
           else 
             SaveBarSettings(bar, "position",{X=bar.position.X,Y=bar.position.Y},"size", {X=bar.size.X,Y=bar.size.Y})

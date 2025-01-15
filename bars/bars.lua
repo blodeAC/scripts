@@ -1065,6 +1065,7 @@ bars = {
     end,
     render = function(bar)
       bar.renderContext="showProfilesCtx"
+      SaveBarSettings(bar,"renderContext",bar.renderContext)
       bar:showProfiles()
     end
   }
