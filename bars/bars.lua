@@ -1059,7 +1059,7 @@ bars = {
           game.Messages.Incoming.Qualities_UpdateInstanceID.Add(bar.watcher)
         end
         if bar.activeProfile==profile then
-          ImGui.GetWindowDrawList().AddRect(screenPos+Vector2.new(1,0),screenPos+Vector2.new(windowSize.X,ImGui.GetTextLineHeight()+miscPadding.Y)-Vector2.new(2,0),0xFF00FF00)
+          ImGui.GetWindowDrawList().AddRect(screenPos+Vector2.new(1,0),screenPos+Vector2.new(windowSize.X,ImGui.GetTextLineHeight()+miscPadding.Y)-Vector2.new(1,0),0xFF00FF00)
         end
       end
     end,
