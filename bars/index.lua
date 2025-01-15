@@ -213,13 +213,13 @@ for i, bar in ipairs(bars) do
   bar.hud=huds[i]
   huds[i].OnHide.Add(function()
     bar.hide = true
+    SaveBarSettings(bar,"hide",bar.hide)
     huds[i].Visible = false
-    SaveBarSettings()
   end)
   huds[i].OnShow.Add(function()
     bar.hide = false
-    huds[i].Visible = true
-    SaveBarSettings()
+    SaveBarSettings(bar,"hide",bar.hide)
+    huds[i].Visible = true    
   end)
 
   -- Set HUD properties.
