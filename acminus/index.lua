@@ -189,14 +189,14 @@ local function init()
     xpRider = xpRider + e.TotalExperience - e.OldTotalExperience
   end)
 
-  game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
+  --[[game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
     local objectId=movementEvent.Data.ObjectId
     local motion=movementEvent.Data.MovementData.State
     local dead=(motion and motion.ForwardCommand==MotionCommand.Dead)
     if (game.World.Selected and game.World.Selected.Id==objectId and dead) then
       getNextCombatTarget()
     end
-  end)
+  end)--]]
   game.Messages.Incoming.Combat_HandleVictimNotificationEventOther.Add(function(e)
     if game.World.Selected == nil or game.World.Selected.Container ~= nil then
       getNextCombatTarget()
