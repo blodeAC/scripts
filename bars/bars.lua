@@ -775,6 +775,11 @@ bars({
     name = "BlueAetheria", --important, must be correctly capitalized for enum to work
     fontScale = 2,
     init = function(bar)
+      if game.ServerName~="Daralet" then
+        print("BlueAetheria disabled due to unusability when not on Daralet")
+        bar.render = function() end
+        return
+      end
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
