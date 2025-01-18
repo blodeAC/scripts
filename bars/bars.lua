@@ -1157,7 +1157,7 @@ bars({
     render = function(bar)
       bar.renderContext = "showProfilesCtx"
       SaveBarSettings(bar, "renderContext", bar.renderContext) --needed so size is saved separately
-      bar:showProfiles()
+      bar.render=bar.showProfiles(bar)
     end
   },
   {
