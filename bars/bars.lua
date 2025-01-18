@@ -1626,7 +1626,6 @@ bars({
         ImGui.GetWindowDrawList().AddRectFilled(cursorStart,cursorStart+iconSize+bar.bufferRect+Vector2.new(0,ImGui.GetTextLineHeight()+spellLevelSize.Y/2),0xAA000000)
 
         ImGui.SetCursorScreenPos(cursorStart+bar.bufferRect/2+Vector2.new(0,spellLevelSize.Y/2))--+Vector2.new(expirySize.X>iconSize.X and (iconSize.X-expirySize.X)/2 or 0,0))
-        local cursorAfterRect = ImGui.GetCursorScreenPos()
         ImGui.TextureButton("##buff" .. buff.Id, GetOrCreateTexture(buff.icon), iconSize)
         if ImGui.IsItemHovered() then
           ImGui.BeginTooltip()
@@ -1641,13 +1640,14 @@ bars({
           ImGui.EndTooltip()
         end
         if bar.spellLevelDisplay and buff.Level then
-          ImGui.SetCursorScreenPos(cursorStart + Vector2.new(spellLevelSize.X/2,0))--Vector2.new(0,spellLevelSize.Y/2))--Vector2.new(0,spellLevelSize.Y))
+          ImGui.SetCursorScreenPos(cursorStart + Vector2.new(bar.bufferRect.X/2 + iconSize.X/2 - spellLevelSize.X/2,0))--Vector2.new(0,spellLevelSize.Y/2))--Vector2.new(0,spellLevelSize.Y))
           ImGui.PushStyleColor(_imgui.ImGuiCol.Text,bar.spellLevelColor)
           ImGui.Text(buff.Level)
           ImGui.PopStyleColor()
         end
 
-        ImGui.SetCursorScreenPos(cursorAfterRect + Vector2.new(0, iconSize.Y))
+        local expiryTextSize=ImGui.CalcTextSize(bar.formatSeconds(expiryTimer))
+        ImGui.SetCursorScreenPos(cursorStart + Vector2.new(bar.bufferRect.X/2+iconSize.X/2-expiryTextSize.X/2, iconSize.Y+bar.bufferRect.Y/2+spellLevelSize.Y/2))
         ImGui.Text(bar.formatSeconds(expiryTimer))
 
       end
@@ -1833,7 +1833,6 @@ bars({
         ImGui.GetWindowDrawList().AddRectFilled(cursorStart,cursorStart+iconSize+bar.bufferRect+Vector2.new(0,ImGui.GetTextLineHeight()+spellLevelSize.Y/2),0xAA000000)
 
         ImGui.SetCursorScreenPos(cursorStart+bar.bufferRect/2+Vector2.new(0,spellLevelSize.Y/2))--+Vector2.new(expirySize.X>iconSize.X and (iconSize.X-expirySize.X)/2 or 0,0))
-        local cursorAfterRect = ImGui.GetCursorScreenPos()
         ImGui.TextureButton("##buff" .. buff.Id, GetOrCreateTexture(buff.icon), iconSize)
         if ImGui.IsItemHovered() then
           ImGui.BeginTooltip()
@@ -1848,13 +1847,14 @@ bars({
           ImGui.EndTooltip()
         end
         if bar.spellLevelDisplay and buff.Level then
-          ImGui.SetCursorScreenPos(cursorStart + Vector2.new(spellLevelSize.X/2,0))--Vector2.new(0,spellLevelSize.Y/2))--Vector2.new(0,spellLevelSize.Y))
+          ImGui.SetCursorScreenPos(cursorStart + Vector2.new(bar.bufferRect.X/2 + iconSize.X/2 - spellLevelSize.X/2,0))--Vector2.new(0,spellLevelSize.Y/2))--Vector2.new(0,spellLevelSize.Y))
           ImGui.PushStyleColor(_imgui.ImGuiCol.Text,bar.spellLevelColor)
           ImGui.Text(buff.Level)
           ImGui.PopStyleColor()
         end
 
-        ImGui.SetCursorScreenPos(cursorAfterRect + Vector2.new(0, iconSize.Y))
+        local expiryTextSize=ImGui.CalcTextSize(bar.formatSeconds(expiryTimer))
+        ImGui.SetCursorScreenPos(cursorStart + Vector2.new(bar.bufferRect.X/2+iconSize.X/2-expiryTextSize.X/2, iconSize.Y+bar.bufferRect.Y/2+spellLevelSize.Y/2))
         ImGui.Text(bar.formatSeconds(expiryTimer))
 
       end
