@@ -515,7 +515,7 @@ bars({
           damage = e.Data.DamageDone
         elseif (e.Data.Type == LogTextType.Magic or e.Data.Type == LogTextType.CombatSelf) then
           local r = Regex.new(
-            "^(?<crit>Critical hit!  )?(?:[^!]+! )*(?:(?:You (?:hit|mangle|slash|cut|scratch|gore|impale|stab|nick|crush|smash|bash|graze|incinerate|burn|scorch|singe|freeze|frost|chill|numb|dissolve|corrode|sear|blister|blast|jolt|shock|spark) (?<mobName>.*?) for (?<damage>[\\d,]+) points (?:.*))|(?:With .*? you drain (?<drainDamage>[\\d,]+) points of health from (?<magicMobName>.*?))\\.)$"
+            "^(?<crit>Critical hit!  )?(?:[^!]+! )*(?:(?:You (?:eradicate|wither|twist|scar|hit|mangle|slash|cut|scratch|gore|impale|stab|nick|crush|smash|bash|graze|incinerate|burn|scorch|singe|freeze|frost|chill|numb|dissolve|corrode|sear|blister|blast|jolt|shock|spark) (?<mobName>.*?) for (?<damage>[\\d,]+) points (?:.*))|(?:With .*? you (?:drain|exhaust|siphon|deplete) (?<drainDamage>[\\d,]+) points of health from (?<magicMobName>.*?))\\.)$"
           )
           local m = r.Match(e.Data.Text)
           if (m.Success) then

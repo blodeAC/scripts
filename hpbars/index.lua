@@ -497,7 +497,7 @@ end
 game.OnStateChanged.Add(function(state)
   if state.NewState == ClientState.In_Game then
     init()
-  else
+  elseif targetHud~=nil then
     targetHud.Dispose()
   end
 end)
