@@ -142,17 +142,21 @@ local function renderEvent(bar)                                                 
 end
 
 -- INITIALIZATION STUFF FOR TO BE ABLE TO SEE PARENT
+-- Create the bars table with a metatable
 local bars = setmetatable({}, {
+  -- When adding new entries, ensure parent and index by name
   __newindex = function(t, k, v)
-    if type(v) == "table" then
-      v.parent = t
+    if type(v) == "table" and v.name then
+      rawset(t, v.name, v) -- Index the bar by its name
+      v.parent = t         -- Set the parent reference
     end
-    rawset(t, k, v)
+    rawset(t, k, v)         -- Add to the array
   end,
-  -- Hook for initializing the table
+  
+  -- Initialize with multiple entries
   __call = function(t, initialValues)
-    for i, v in ipairs(initialValues) do
-      t[i] = v -- This triggers __newindex
+    for _, v in ipairs(initialValues) do
+      table.insert(t, v) -- Triggers __newindex
     end
   end
 })
@@ -1107,7 +1111,7 @@ bars({
       end
       for _, profile in ipairs(bar.profiles) do
         local screenPos = ImGui.GetCursorScreenPos()
-        if ImGui.Button(profile.name .. "##profile"..tostring(_), Vector2.new(windowSize.X, ImGui.GetTextLineHeight()) + miscPadding) then
+        if ImGui.Button(profile.name .. "##profile" .. tostring(_), Vector2.new(windowSize.X, ImGui.GetTextLineHeight()) + miscPadding) then
           bar.activeProfile = profile
           local count = 1
           for slot, gearId in pairs(profile.gear) do
@@ -1175,8 +1179,8 @@ bars({
         local hours = math.floor(seconds / 3600)
         local minutes = math.floor((seconds % 3600) / 60)
         local remainingSeconds = seconds % 60
-        if hours>0 then
-          return string.format("%02d:%02d",hours,minutes)
+        if hours > 0 then
+          return string.format("%02d:%02d", hours, minutes)
         else
           return string.format("%02d:%02d", minutes, remainingSeconds)
         end
@@ -1192,23 +1196,23 @@ bars({
       for _, enchantment in ipairs(game.Character.ActiveEnchantments()) do
         ---@type Spell
         local spell = game.Character.SpellBook.Get(enchantment.SpellId)
-        if bar.showItemBuffs or enchantment.Duration~=-1 then
+        if bar.showItemBuffs or enchantment.Duration ~= -1 then
           local entry = {}
           --entry.printProps = {}
           entry.Name = spell.Name or "Unknown"
           entry.Id = spell.Id or "No spell.Id"
           entry.Category = enchantment.Category or spell.Category or "No category"
           entry.StatModType = spell.StatModType
-          entry.Duration = enchantment.Duration
           entry.Level = spell.Level or "No spell.Level"
           entry.Power = enchantment.Power
-          
+
           entry.ClientReceivedAt = enchantment.ClientReceivedAt
           entry.Duration = enchantment.Duration
           entry.StartTime = enchantment.StartTime
-          if entry.Duration>-1 then
-            entry.ExpiresAt = (entry.ClientReceivedAt + TimeSpan.FromSeconds(entry.StartTime + entry.Duration)-DateTime.UtcNow).TotalSeconds 
-          else 
+          if entry.Duration > -1 then
+            entry.ExpiresAt = (entry.ClientReceivedAt + TimeSpan.FromSeconds(entry.StartTime + entry.Duration) - DateTime.UtcNow)
+            .TotalSeconds
+          else
             entry.ExpiresAt = 999999
           end
 
@@ -1223,26 +1227,27 @@ bars({
           end
 
 
-          local statKey=spell.StatModKey
-          if spell.StatModAttribute~=AttributeId.Undef then
-            entry.stat=tostring(AttributeId.Undef + statKey)
-          elseif spell.StatModVital~=Vital.Undef then
-            entry.stat=tostring(Vital.Undef + statKey)
-          elseif spell.StatModSkill~=SkillId.Undef then
-            entry.stat=tostring(SkillId.Undef + statKey)
-          elseif spell.StatModIntProp~=IntId.Undef then
-            entry.stat=tostring(IntId.Undef + statKey)
-          elseif spell.StatModFloatProp~=FloatId.Undef then
-            entry.stat=tostring(FloatId.Undef + statKey)
+          local statKey = spell.StatModKey
+          if spell.StatModAttribute ~= AttributeId.Undef then
+            entry.stat = tostring(AttributeId.Undef + statKey)
+          elseif spell.StatModVital ~= Vital.Undef then
+            entry.stat = tostring(Vital.Undef + statKey)
+          elseif spell.StatModSkill ~= SkillId.Undef then
+            entry.stat = tostring(SkillId.Undef + statKey)
+          elseif spell.StatModIntProp ~= IntId.Undef then
+            entry.stat = tostring(IntId.Undef + statKey)
+          elseif spell.StatModFloatProp ~= FloatId.Undef then
+            entry.stat = tostring(FloatId.Undef + statKey)
           else
-            entry.stat=tostring(enchantment.Category)
+            entry.stat = tostring(enchantment.Category)
           end
 
           if hasFlag(enchantment, EnchantmentFlags.Additive) then
-            entry.printProp =  enchantment.StatValue>0 and ("+"..enchantment.StatValue) or enchantment.StatValue
+            entry.printProp = enchantment.StatValue > 0 and ("+" .. enchantment.StatValue) or enchantment.StatValue
           elseif hasFlag(enchantment, EnchantmentFlags.Multiplicative) then
-            local percent=enchantment.StatValue-1
-            entry.printProp =  (percent>0 and ("+"..string.format("%.0d",percent*100)) or string.format("%.0d",percent*100)).."%%"
+            local percent = enchantment.StatValue - 1
+            entry.printProp = (percent > 0 and ("+" .. string.format("%.0d", percent * 100)) or string.format("%.0d", percent * 100)) ..
+            "%%"
           end
 
 
@@ -1273,8 +1278,8 @@ bars({
         end
       end
 
-      local sortKey=bar.sortingOptions[bar.sortOption+1]
-      for i,buffsOrDebuffs in pairs(activeSpells) do
+      local sortKey = bar.sortingOptions[bar.sortOption + 1]
+      for i, buffsOrDebuffs in pairs(activeSpells) do
         table.sort(buffsOrDebuffs, function(a, b)
           if bar.reverseSort then
             return a[sortKey] > b[sortKey]
@@ -1284,55 +1289,57 @@ bars({
         end)
       end
 
-      local checkboxSize = Vector2.new(24,24) 
-      local reservedHeight = checkboxSize.Y + ImGui.GetStyle().ChildBorderSize*2
+      local checkboxSize = Vector2.new(24, 24)
+      local reservedHeight = checkboxSize.Y + ImGui.GetStyle().ChildBorderSize * 2
 
       -- Calculate the available space for the table
       local availableSize = ImGui.GetContentRegionAvail()
       local tableSize = Vector2.new(availableSize.X, availableSize.Y - reservedHeight)
 
       -- Render the table
-      if ImGui.BeginTable("Buffs | Debuffs", 2, _imgui.ImGuiTableFlags.SizingStretchSame+_imgui.ImGuiTableFlags.Resizable, tableSize) then
+      if ImGui.BeginTable("Buffs | Debuffs", 2, _imgui.ImGuiTableFlags.SizingStretchSame + _imgui.ImGuiTableFlags.Resizable, tableSize) then
         -- Table logic (columns, rows, etc.)
         ImGui.TableSetupColumn(" Buffs", _imgui.ImGuiTableColumnFlags.WidthStretch)
         ImGui.TableSetupColumn(" Debuffs", _imgui.ImGuiTableColumnFlags.WidthStretch)
         ImGui.TableHeadersRow()
 
-        for column, buffsOrDebuffs in ipairs({activeSpells.buffs, activeSpells.debuffs}) do
+        for column, buffsOrDebuffs in ipairs({ activeSpells.buffs, activeSpells.debuffs }) do
           ImGui.TableNextColumn()
-          
+
           -- Scrollable child
-          local borderPadding = ImGui.GetStyle().FrameBorderSize * 2 
-          local columnWidth=ImGui.GetColumnWidth()
+          local borderPadding = ImGui.GetStyle().FrameBorderSize * 2
+          local columnWidth = ImGui.GetColumnWidth()
           local columnHeight = ImGui.GetContentRegionAvail().Y - reservedHeight - borderPadding
 
           ImGui.BeginChild("ScrollableColumn##" .. column, Vector2.new(columnWidth, columnHeight), true)
           for _, buffOrDebuff in ipairs(buffsOrDebuffs) do
-            
-            local cursorStart=ImGui.GetCursorScreenPos()
+            local cursorStart = ImGui.GetCursorScreenPos()
             local iconSize = Vector2.new(28, 28)
             local printProp = buffOrDebuff.printProp
 
             local expiryTimer
-            local backgroundColor=ImGui.GetColorU32(_imgui.ImGuiCol.ChildBg)
-            if buffOrDebuff.Duration>-1 then
-              expiryTimer=(buffOrDebuff.ClientReceivedAt + TimeSpan.FromSeconds(buffOrDebuff.StartTime + buffOrDebuff.Duration)-DateTime.UtcNow).TotalSeconds
-              ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram,buffOrDebuff.isBuff and 0xAA006600 or 0xAA000066)
+            local backgroundColor = ImGui.GetColorU32(_imgui.ImGuiCol.ChildBg)
+            if buffOrDebuff.Duration > -1 then
+              expiryTimer = (buffOrDebuff.ClientReceivedAt + TimeSpan.FromSeconds(buffOrDebuff.StartTime + buffOrDebuff.Duration) - DateTime.UtcNow)
+              .TotalSeconds
+              ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, buffOrDebuff.isBuff and 0xAA006600 or 0xAA000066)
               ImGui.PushStyleColor(_imgui.ImGuiCol.FrameBg, ImGui.GetColorU32(backgroundColor))
-              ImGui.ProgressBar(expiryTimer/buffOrDebuff.Duration,Vector2.new(ImGui.GetColumnWidth(),iconSize.Y+ImGui.GetStyle().CellPadding.Y),"")
+              ImGui.ProgressBar(expiryTimer / buffOrDebuff.Duration,
+                Vector2.new(ImGui.GetColumnWidth(), iconSize.Y + ImGui.GetStyle().CellPadding.Y), "")
               ImGui.PopStyleColor(2)
             end
- 
+
             ImGui.SetCursorScreenPos(cursorStart)
             ImGui.TextureButton("##" .. buffOrDebuff.Id, GetOrCreateTexture(buffOrDebuff.icon), iconSize)
             if ImGui.IsItemHovered() then
-              if buffOrDebuff.casterId~=game.CharacterId and buffOrDebuff.casterId~=0 and
-                 buffOrDebuff.casterId~=nil and game.World.Exists(buffOrDebuff.casterId) then--]]
+              if buffOrDebuff.casterId ~= game.CharacterId and buffOrDebuff.casterId ~= 0 and
+                  buffOrDebuff.casterId ~= nil and game.World.Exists(buffOrDebuff.casterId) then --]]
                 ImGui.BeginTooltip()
-                
-                local caster=game.World.Get(buffOrDebuff.casterId)
-                ImGui.Text("Granted by\n"..caster.Name)
-                ImGui.TextureButton("##" .. buffOrDebuff.Id-buffOrDebuff.casterId,GetOrCreateTexture(caster.Value(DataId.Icon)),iconSize)
+
+                local caster = game.World.Get(buffOrDebuff.casterId)
+                ImGui.Text("Granted by\n" .. caster.Name)
+                ImGui.TextureButton("##" .. buffOrDebuff.Id - buffOrDebuff.casterId,
+                  GetOrCreateTexture(caster.Value(DataId.Icon)), iconSize)
                 ImGui.EndTooltip()
               end
             end
@@ -1340,102 +1347,480 @@ bars({
             local expiryTimerYAdjust
             if expiryTimer then
               ImGui.SetWindowFontScale(1)
-              expiryTimerYAdjust=ImGui.GetFontSize()/2
-              ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()+Vector2.new(3,0))
-              local cursorStartDurationText=ImGui.GetCursorScreenPos()-Vector2.new(3,expiryTimerYAdjust)
-              local durationTextSize=ImGui.CalcTextSize(bar.formatSeconds(expiryTimer))
-              ImGui.GetWindowDrawList().AddRectFilled(cursorStartDurationText,cursorStartDurationText+durationTextSize+Vector2.new(3,0),0xAA000000)
-              ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()-Vector2.new(0,expiryTimerYAdjust))
+              expiryTimerYAdjust = ImGui.GetFontSize() / 2
+              ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos() + Vector2.new(3, 0))
+              local cursorStartDurationText = ImGui.GetCursorScreenPos() - Vector2.new(3, expiryTimerYAdjust)
+              local durationTextSize = ImGui.CalcTextSize(bar.formatSeconds(expiryTimer))
+              ImGui.GetWindowDrawList().AddRectFilled(cursorStartDurationText,
+                cursorStartDurationText + durationTextSize + Vector2.new(3, 0), 0xAA000000)
+              ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos() - Vector2.new(0, expiryTimerYAdjust))
               ImGui.Text(bar.formatSeconds(expiryTimer))
               ImGui.SetWindowFontScale(bar.fontScale or 1)
             end
 
-            local cursorPostIcon=cursorStart+Vector2.new(iconSize.X, 0)
+            local cursorPostIcon = cursorStart + Vector2.new(iconSize.X, 0)
             local visibleText = tostring(printProp):gsub("%%%%", "%%")
-            local textSize=ImGui.CalcTextSize(visibleText)
+            local textSize = ImGui.CalcTextSize(visibleText)
 
-            local cursorForName=Vector2.new(cursorPostIcon.X + 5,cursorPostIcon.Y + iconSize.Y/2 - ImGui.GetFontSize()/2)
+            local cursorForName = Vector2.new(cursorPostIcon.X + 5,
+              cursorPostIcon.Y + iconSize.Y / 2 - ImGui.GetFontSize() / 2)
             ImGui.SetCursorScreenPos(cursorForName)
-            ImGui.PushClipRect(cursorForName,Vector2.new(cursorForName.X+ImGui.GetContentRegionAvail().X-textSize.X-5,cursorForName.Y+iconSize.Y+ImGui.GetStyle().CellPadding.Y),true)
+            ImGui.PushClipRect(cursorForName,
+              Vector2.new(cursorForName.X + ImGui.GetContentRegionAvail().X - textSize.X - 5,
+                cursorForName.Y + iconSize.Y + ImGui.GetStyle().CellPadding.Y), true)
             ImGui.Text(buffOrDebuff.Name)
             ImGui.PopClipRect()
 
-            local cursorForProp=Vector2.new(cursorStart.X+ImGui.GetContentRegionAvail().X-textSize.X,cursorStart.Y + iconSize.Y/2 - ImGui.GetFontSize()/2)
+            local cursorForProp = Vector2.new(cursorStart.X + ImGui.GetContentRegionAvail().X - textSize.X,
+              cursorStart.Y + iconSize.Y / 2 - ImGui.GetFontSize() / 2)
             ImGui.SetCursorScreenPos(cursorForProp)
-            ImGui.PushStyleColor(_imgui.ImGuiCol.Text,buffOrDebuff.isBuff and 0xFF00FF00 or 0xFF0000FF)
+            ImGui.PushStyleColor(_imgui.ImGuiCol.Text, buffOrDebuff.isBuff and 0xFF00FF00 or 0xFF0000FF)
             ImGui.Text(printProp)
             ImGui.PopStyleColor()
 
-            ImGui.SetCursorScreenPos(Vector2.new(cursorStart.X,cursorStart.Y+iconSize.Y+ImGui.GetStyle().CellPadding.Y+(expiryTimerYAdjust or 0)))
+            ImGui.SetCursorScreenPos(Vector2.new(cursorStart.X,
+              cursorStart.Y + iconSize.Y + ImGui.GetStyle().CellPadding.Y + (expiryTimerYAdjust or 0)))
           end
           ImGui.EndChild()
-
         end
         ImGui.EndTable()
       end
 
       local cursorForCheckbox = ImGui.GetCursorScreenPos()
-      local function checkbox(label,setting,plusOrMinus)
+      local function checkbox(label, setting, plusOrMinus)
         -- Get the position and size for the checkbox
         local cursor = ImGui.GetCursorScreenPos()
 
         -- Calculate the bounding box for the checkbox
         local mouse = ImGui.GetMousePos()
         local isHovered = mouse.X >= cursor.X and mouse.X <= cursor.X + checkboxSize.X and
-                          mouse.Y >= cursor.Y and mouse.Y <= cursor.Y + checkboxSize.Y
+            mouse.Y >= cursor.Y and mouse.Y <= cursor.Y + checkboxSize.Y
 
         -- Handle input
         if isHovered and ImGui.IsMouseClicked(0) then
           bar[setting] = not bar[setting]
         end
 
-        local drawlist=ImGui.GetWindowDrawList()
+        local drawlist = ImGui.GetWindowDrawList()
         -- Draw the checkbox
-        ImGui.InvisibleButton("##checkbox"..setting, checkboxSize)
+        ImGui.InvisibleButton("##checkbox" .. setting, checkboxSize)
 
         if plusOrMinus then
-          drawlist.AddLine(cursor + Vector2.new(3,checkboxSize.Y/2), cursor + Vector2.new(checkboxSize.X-3,checkboxSize.Y/2), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
+          drawlist.AddLine(cursor + Vector2.new(3, checkboxSize.Y / 2),
+            cursor + Vector2.new(checkboxSize.X - 3, checkboxSize.Y / 2), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
           if not bar[setting] then
-            drawlist.AddLine(cursor + Vector2.new(checkboxSize.X/2,3), cursor + Vector2.new(checkboxSize.X/2,checkboxSize.Y-3), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
+            drawlist.AddLine(cursor + Vector2.new(checkboxSize.X / 2, 3),
+              cursor + Vector2.new(checkboxSize.X / 2, checkboxSize.Y - 3), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
           end
         elseif bar[setting] then
           drawlist.AddRectFilled(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.CheckMark))
         else
           drawlist.AddRect(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.Border))
         end
-    
 
-        ImGui.SetCursorScreenPos(Vector2.new(cursorForCheckbox.X + checkboxSize.X + 5, cursorForCheckbox.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2))
+
+        ImGui.SetCursorScreenPos(Vector2.new(cursorForCheckbox.X + checkboxSize.X + 5,
+          cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2))
         ImGui.Text(label)
 
         return bar[setting]
       end
-      if checkbox("Show Item Buffs","showItemBuffs") then end
+      if checkbox("Show Item Buffs", "showItemBuffs") then end
 
-      local cursorForOptions=Vector2.new(ImGui.GetWindowPos().X+ImGui.GetWindowWidth()/2 + 5,cursorForCheckbox.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2)
-      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X-checkboxSize.X,cursorForCheckbox.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2))
+      local cursorForOptions = Vector2.new(ImGui.GetWindowPos().X + ImGui.GetWindowWidth() / 2 + 5,
+        cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2)
+      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X - checkboxSize.X,
+        cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2))
       ImGui.Text("Sort by: ")
       ImGui.SameLine()
-      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X+checkboxSize.X-5,cursorForCheckbox.Y))
+      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X + checkboxSize.X - 5, cursorForCheckbox.Y))
 
-      if checkbox("","reverseSort",true) then end
+      if checkbox("", "reverseSort", true) then end
       ImGui.SameLine()
       ImGui.SetNextItemWidth(-1)
-      ImGui.SetCursorScreenPos(cursorForOptions+Vector2.new(checkboxSize.X*2,0))
-      local changed, newIndex = ImGui.Combo("##sortOption",bar.sortOption,bar.sortingOptions,#bar.sortingOptions)
+      ImGui.SetCursorScreenPos(cursorForOptions + Vector2.new(checkboxSize.X * 2, 0))
+      local changed, newIndex = ImGui.Combo("##sortOption", bar.sortOption, bar.sortingOptions, #bar.sortingOptions)
       if changed then
-        bar.sortOption=newIndex
+        bar.sortOption = newIndex
       end
     end
-  }
+  },
+  {
+    name = "buffs",
+    windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
+    init = function(bar)
+      bar.growAxis = "Y"
+      bar.growReverse = true
+      bar.bufferRect = Vector2.new(10,5)
+      bar.iconSpacing = 10
+      --bar.expiryMaxSeconds = 600
+      bar.spellLevelDisplay = true
+      bar.spellLevelColor = 0xBBBBBBBB
+      bar.displayCriteria = function(enchantment, spell, entry)
+        return ((enchantment.Duration ~= -1) and (SpellFlags.Beneficial + spell.Flags == spell.Flags) and ((not bar.expiryMaxSeconds) or entry.ExpiresAt<bar.expiryMaxSeconds))
+      end
+
+      function bar.formatSeconds(seconds)
+        local hours = math.floor(seconds / 3600)
+        local minutes = math.floor((seconds % 3600) / 60)
+        local remainingSeconds = seconds % 60
+        if hours > 0 then
+          return string.format("%02d:%02d", hours, minutes)
+        elseif minutes>0 then
+          return string.format("%02d:%02d", minutes, remainingSeconds)
+        else
+          return string.format("%ds", remainingSeconds)
+        end
+      end
+    end,
+    render = function(bar)
+      local buffs = {}
+
+      ---@param enchantment Enchantment
+      for _, enchantment in ipairs(game.Character.ActiveEnchantments()) do
+        ---@type Spell
+        local spell = game.Character.SpellBook.Get(enchantment.SpellId)
+        
+        local entry = {}
+        entry.ClientReceivedAt = enchantment.ClientReceivedAt
+        entry.Duration = enchantment.Duration
+        entry.StartTime = enchantment.StartTime
+        if entry.Duration > -1 then
+          entry.ExpiresAt = (entry.ClientReceivedAt + TimeSpan.FromSeconds(entry.StartTime + entry.Duration) - DateTime.UtcNow).TotalSeconds
+        else
+          entry.ExpiresAt = 999999
+        end
+
+        if bar.displayCriteria(enchantment,spell,entry) then
+          entry.Name = spell.Name or "Unknown"
+          entry.Id = spell.Id or "No spell.Id"
+          entry.Level = ({"I","II","III","IV","V","VI","VII","VIII"})[spell.Level]
+
+          entry.icon = spell.Icon or 9914
+
+          local function hasFlag(object, flag)
+            return (object.Flags + flag == object.Flags)
+          end
+
+          local statKey = spell.StatModKey
+          if spell.StatModAttribute ~= AttributeId.Undef then
+            entry.stat = tostring(AttributeId.Undef + statKey)
+          elseif spell.StatModVital ~= Vital.Undef then
+            entry.stat = tostring(Vital.Undef + statKey)
+          elseif spell.StatModSkill ~= SkillId.Undef then
+            entry.stat = tostring(SkillId.Undef + statKey)
+          elseif spell.StatModIntProp ~= IntId.Undef then
+            entry.stat = tostring(IntId.Undef + statKey)
+          elseif spell.StatModFloatProp ~= FloatId.Undef then
+            entry.stat = tostring(FloatId.Undef + statKey)
+          else
+            entry.stat = tostring(enchantment.Category)
+          end
+
+          if hasFlag(enchantment, EnchantmentFlags.Additive) then
+            entry.printProp = enchantment.StatValue > 0 and ("+" .. enchantment.StatValue) or enchantment.StatValue
+          elseif hasFlag(enchantment, EnchantmentFlags.Multiplicative) then
+            local percent = enchantment.StatValue - 1
+            entry.printProp = (percent > 0 and ("+" .. string.format("%.0d", percent * 100)) or string.format("%.0d", percent * 100)) .. "%%"
+          end
+
+          table.insert(buffs, entry)
+        end
+      end
+
+      table.sort(buffs, function(a, b)
+        return a.ClientReceivedAt < b.ClientReceivedAt
+      end)
+      
+      local windowPos = ImGui.GetWindowPos()
+      local windowSize = ImGui.GetContentRegionAvail()
+      ImGui.BeginChild("ScrollableChild", ImGui.GetContentRegionAvail(), true)
+      for i, buff in ipairs(buffs) do
+        local iconSize = Vector2.new(28, 28)
+        local cursorStartX,cursorStartY
+        local expiryTimer = (buff.ClientReceivedAt + TimeSpan.FromSeconds(buff.StartTime + buff.Duration) - DateTime.UtcNow).TotalSeconds
+        local spellLevelSize = ImGui.CalcTextSize(buff.Level)
+
+        local reservedPerIconX = iconSize.X + bar.bufferRect.X/2 + bar.iconSpacing
+        local reservedPerIconY = iconSize.Y + bar.bufferRect.Y/2 + bar.iconSpacing + ImGui.GetTextLineHeight()*1.5
+        if bar.growAxis == "X" then
+          if not bar.growReverse then 
+            cursorStartX = windowPos.X + (i-1)*reservedPerIconX
+            cursorStartY = windowPos.Y
+            if i>1 and (cursorStartX + reservedPerIconX) > (windowPos.X+windowSize.X) then
+              local iconsPerRow = math.floor(windowSize.X / reservedPerIconX) 
+              local rowOffset=1
+              while rowOffset<i and iconsPerRow*rowOffset<i do
+                rowOffset=rowOffset+1
+              end
+              cursorStartX = windowPos.X + math.floor((i-1)-iconsPerRow*rowOffset+iconsPerRow)*reservedPerIconX
+              cursorStartY = windowPos.Y + (rowOffset-1)*reservedPerIconY
+            end
+          else --reverse X
+            cursorStartX = windowPos.X + windowSize.X - i*reservedPerIconX
+            cursorStartY = windowPos.Y
+            if i>1 and cursorStartX < windowPos.X then
+              local iconsPerRow = math.floor(windowSize.X / reservedPerIconX) 
+              local rowOffset=1
+              while rowOffset<i and iconsPerRow*rowOffset<i do
+                rowOffset=rowOffset+1
+              end
+              cursorStartX = windowPos.X + windowSize.X - math.floor(i-iconsPerRow*rowOffset+iconsPerRow)*reservedPerIconX
+              cursorStartY = windowPos.Y + (rowOffset-1)*reservedPerIconY
+            end
+          end
+        else --growAxis Y
+          if not bar.growReverse then 
+            cursorStartX = windowPos.X 
+            cursorStartY = windowPos.Y + (i-1)*reservedPerIconY
+            if i>1 and (cursorStartY + reservedPerIconY) > (windowPos.Y+windowSize.Y) then
+              local iconsPerCol = math.floor(windowSize.Y / reservedPerIconY) 
+              local colOffset=1
+              while colOffset<i and iconsPerCol*colOffset<i do
+                colOffset=colOffset+1
+              end
+              cursorStartX = windowPos.X + (colOffset-1)*reservedPerIconX
+              cursorStartY = windowPos.Y + (colOffset-1)*math.floor((i-1)-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
+            end
+          else -- reverse Y
+            cursorStartX = windowPos.X 
+            cursorStartY = windowPos.Y + windowSize.Y - i*reservedPerIconY
+            if i>1 and cursorStartY < windowPos.Y then
+              local iconsPerCol = math.floor(windowSize.Y / reservedPerIconY) 
+              local colOffset=1
+              while colOffset<i and iconsPerCol*colOffset<i do
+                colOffset=colOffset+1
+              end
+              cursorStartX = windowPos.X + (colOffset-1)*reservedPerIconX
+              cursorStartY = windowPos.Y + windowSize.Y - (colOffset-1)*math.floor(i-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
+            end
+          end
+        end
+        
+        local cursorStart = Vector2.new(cursorStartX,cursorStartY)
+        ImGui.GetWindowDrawList().AddRectFilled(cursorStart,cursorStart+iconSize+bar.bufferRect+Vector2.new(0,ImGui.GetTextLineHeight()+spellLevelSize.Y/2),0xAA000000)
+
+        ImGui.SetCursorScreenPos(cursorStart+bar.bufferRect/2+Vector2.new(0,spellLevelSize.Y/2))--+Vector2.new(expirySize.X>iconSize.X and (iconSize.X-expirySize.X)/2 or 0,0))
+        local cursorAfterRect = ImGui.GetCursorScreenPos()
+        ImGui.TextureButton("##buff" .. buff.Id, GetOrCreateTexture(buff.icon), iconSize)
+        if ImGui.IsItemHovered() then
+          ImGui.BeginTooltip()
+
+          ImGui.Text(buff.Name)
+          ImGui.Text(buff.stat)
+          ImGui.SameLine()
+          ImGui.PushStyleColor(_imgui.ImGuiCol.Text,0xFF00FF00)
+          ImGui.Text(" "..buff.printProp)
+          ImGui.PopStyleColor()
+
+          ImGui.EndTooltip()
+        end
+        if bar.spellLevelDisplay and buff.Level then
+          ImGui.SetCursorScreenPos(cursorStart + Vector2.new(spellLevelSize.X/2,0))--Vector2.new(0,spellLevelSize.Y/2))--Vector2.new(0,spellLevelSize.Y))
+          ImGui.PushStyleColor(_imgui.ImGuiCol.Text,bar.spellLevelColor)
+          ImGui.Text(buff.Level)
+          ImGui.PopStyleColor()
+        end
+
+        ImGui.SetCursorScreenPos(cursorAfterRect + Vector2.new(0, iconSize.Y))
+        ImGui.Text(bar.formatSeconds(expiryTimer))
+
+      end
+      ImGui.EndChild()
+    end
+  },
+  {
+    name = "debuffs",
+    windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
+    init = function(bar)
+      bar.growAxis = "X"
+      bar.growReverse = false
+      bar.bufferRect = Vector2.new(10,5)
+      bar.iconSpacing = 10
+      --bar.expiryMaxSeconds = 600
+      bar.spellLevelDisplay = true
+      bar.spellLevelColor = 0xBBBBBBBB
+      bar.displayCriteria = function(enchantment, spell, entry)
+        return ((enchantment.Duration ~= -1) and (not (SpellFlags.Beneficial + spell.Flags == spell.Flags)) and ((not bar.expiryMaxSeconds) or entry.ExpiresAt<bar.expiryMaxSeconds))
+      end
+
+      function bar.formatSeconds(seconds)
+        local hours = math.floor(seconds / 3600)
+        local minutes = math.floor((seconds % 3600) / 60)
+        local remainingSeconds = seconds % 60
+        if hours > 0 then
+          return string.format("%02d:%02d", hours, minutes)
+        elseif minutes>0 then
+          return string.format("%02d:%02d", minutes, remainingSeconds)
+        else
+          return string.format("%ds", remainingSeconds)
+        end
+      end
+    end,
+    render = function(bar)
+      local buffs = {}
+
+      ---@param enchantment Enchantment
+      for _, enchantment in ipairs(game.Character.ActiveEnchantments()) do
+        ---@type Spell
+        local spell = game.Character.SpellBook.Get(enchantment.SpellId)
+        
+        local entry = {}
+        entry.ClientReceivedAt = enchantment.ClientReceivedAt
+        entry.Duration = enchantment.Duration
+        entry.StartTime = enchantment.StartTime
+        if entry.Duration > -1 then
+          entry.ExpiresAt = (entry.ClientReceivedAt + TimeSpan.FromSeconds(entry.StartTime + entry.Duration) - DateTime.UtcNow).TotalSeconds
+        else
+          entry.ExpiresAt = 999999
+        end
+
+        if bar.displayCriteria(enchantment,spell,entry) then
+          entry.Name = spell.Name or "Unknown"
+          entry.Id = spell.Id or "No spell.Id"
+          entry.Level = ({"I","II","III","IV","V","VI","VII","VIII"})[spell.Level]
+
+          entry.icon = spell.Icon or 9914
+
+          local function hasFlag(object, flag)
+            return (object.Flags + flag == object.Flags)
+          end
+
+          local statKey = spell.StatModKey
+          if spell.StatModAttribute ~= AttributeId.Undef then
+            entry.stat = tostring(AttributeId.Undef + statKey)
+          elseif spell.StatModVital ~= Vital.Undef then
+            entry.stat = tostring(Vital.Undef + statKey)
+          elseif spell.StatModSkill ~= SkillId.Undef then
+            entry.stat = tostring(SkillId.Undef + statKey)
+          elseif spell.StatModIntProp ~= IntId.Undef then
+            entry.stat = tostring(IntId.Undef + statKey)
+          elseif spell.StatModFloatProp ~= FloatId.Undef then
+            entry.stat = tostring(FloatId.Undef + statKey)
+          else
+            entry.stat = tostring(enchantment.Category)
+          end
+
+          if hasFlag(enchantment, EnchantmentFlags.Additive) then
+            entry.printProp = enchantment.StatValue > 0 and ("+" .. enchantment.StatValue) or enchantment.StatValue
+          elseif hasFlag(enchantment, EnchantmentFlags.Multiplicative) then
+            local percent = enchantment.StatValue - 1
+            entry.printProp = (percent > 0 and ("+" .. string.format("%.0d", percent * 100)) or string.format("%.0d", percent * 100)) .. "%%"
+          end
+
+          table.insert(buffs, entry)
+        end
+      end
+
+      table.sort(buffs, function(a, b)
+        return a.ClientReceivedAt < b.ClientReceivedAt
+      end)
+      
+      local windowPos = ImGui.GetWindowPos()
+      local windowSize = ImGui.GetContentRegionAvail()
+      ImGui.BeginChild("ScrollableChild", ImGui.GetContentRegionAvail(), true)
+      for i, buff in ipairs(buffs) do
+        local iconSize = Vector2.new(28, 28)
+        local cursorStartX,cursorStartY
+        local expiryTimer = (buff.ClientReceivedAt + TimeSpan.FromSeconds(buff.StartTime + buff.Duration) - DateTime.UtcNow).TotalSeconds
+        local spellLevelSize = ImGui.CalcTextSize(buff.Level)
+
+        local reservedPerIconX = iconSize.X + bar.bufferRect.X/2 + bar.iconSpacing
+        local reservedPerIconY = iconSize.Y + bar.bufferRect.Y/2 + bar.iconSpacing + ImGui.GetTextLineHeight()*1.5
+        if bar.growAxis == "X" then
+          if not bar.growReverse then 
+            cursorStartX = windowPos.X + (i-1)*reservedPerIconX
+            cursorStartY = windowPos.Y
+            if i>1 and (cursorStartX + reservedPerIconX) > (windowPos.X+windowSize.X) then
+              local iconsPerRow = math.floor(windowSize.X / reservedPerIconX) 
+              local rowOffset=1
+              while rowOffset<i and iconsPerRow*rowOffset<i do
+                rowOffset=rowOffset+1
+              end
+              cursorStartX = windowPos.X + math.floor((i-1)-iconsPerRow*rowOffset+iconsPerRow)*reservedPerIconX
+              cursorStartY = windowPos.Y + (rowOffset-1)*reservedPerIconY
+            end
+          else --reverse X
+            cursorStartX = windowPos.X + windowSize.X - i*reservedPerIconX
+            cursorStartY = windowPos.Y
+            if i>1 and cursorStartX < windowPos.X then
+              local iconsPerRow = math.floor(windowSize.X / reservedPerIconX) 
+              local rowOffset=1
+              while rowOffset<i and iconsPerRow*rowOffset<i do
+                rowOffset=rowOffset+1
+              end
+              cursorStartX = windowPos.X + windowSize.X - math.floor(i-iconsPerRow*rowOffset+iconsPerRow)*reservedPerIconX
+              cursorStartY = windowPos.Y + (rowOffset-1)*reservedPerIconY
+            end
+          end
+        else --growAxis Y
+          if not bar.growReverse then 
+            cursorStartX = windowPos.X 
+            cursorStartY = windowPos.Y + (i-1)*reservedPerIconY
+            if i>1 and (cursorStartY + reservedPerIconY) > (windowPos.Y+windowSize.Y) then
+              local iconsPerCol = math.floor(windowSize.Y / reservedPerIconY) 
+              local colOffset=1
+              while colOffset<i and iconsPerCol*colOffset<i do
+                colOffset=colOffset+1
+              end
+              cursorStartX = windowPos.X + (colOffset-1)*reservedPerIconX
+              cursorStartY = windowPos.Y + (colOffset-1)*math.floor((i-1)-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
+            end
+          else -- reverse Y
+            cursorStartX = windowPos.X 
+            cursorStartY = windowPos.Y + windowSize.Y - i*reservedPerIconY
+            if i>1 and cursorStartY < windowPos.Y then
+              local iconsPerCol = math.floor(windowSize.Y / reservedPerIconY) 
+              local colOffset=1
+              while colOffset<i and iconsPerCol*colOffset<i do
+                colOffset=colOffset+1
+              end
+              cursorStartX = windowPos.X + (colOffset-1)*reservedPerIconX
+              cursorStartY = windowPos.Y + windowSize.Y - (colOffset-1)*math.floor(i-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
+            end
+          end
+        end
+        
+        local cursorStart = Vector2.new(cursorStartX,cursorStartY)
+        ImGui.GetWindowDrawList().AddRectFilled(cursorStart,cursorStart+iconSize+bar.bufferRect+Vector2.new(0,ImGui.GetTextLineHeight()+spellLevelSize.Y/2),0xAA000000)
+
+        ImGui.SetCursorScreenPos(cursorStart+bar.bufferRect/2+Vector2.new(0,spellLevelSize.Y/2))--+Vector2.new(expirySize.X>iconSize.X and (iconSize.X-expirySize.X)/2 or 0,0))
+        local cursorAfterRect = ImGui.GetCursorScreenPos()
+        ImGui.TextureButton("##buff" .. buff.Id, GetOrCreateTexture(buff.icon), iconSize)
+        if ImGui.IsItemHovered() then
+          ImGui.BeginTooltip()
+
+          ImGui.Text(buff.Name)
+          ImGui.Text(buff.stat)
+          ImGui.SameLine()
+          ImGui.PushStyleColor(_imgui.ImGuiCol.Text,0xFF00FF00)
+          ImGui.Text(" "..buff.printProp)
+          ImGui.PopStyleColor()
+
+          ImGui.EndTooltip()
+        end
+        if bar.spellLevelDisplay and buff.Level then
+          ImGui.SetCursorScreenPos(cursorStart + Vector2.new(spellLevelSize.X/2,0))--Vector2.new(0,spellLevelSize.Y/2))--Vector2.new(0,spellLevelSize.Y))
+          ImGui.PushStyleColor(_imgui.ImGuiCol.Text,bar.spellLevelColor)
+          ImGui.Text(buff.Level)
+          ImGui.PopStyleColor()
+        end
+
+        ImGui.SetCursorScreenPos(cursorAfterRect + Vector2.new(0, iconSize.Y))
+        ImGui.Text(bar.formatSeconds(expiryTimer))
+
+      end
+      ImGui.EndChild()
+    end
+  },
 })
 
 return bars
 
 
-          --table.insert(entry.printProps,tostring(enchantment.Duration))
+--table.insert(entry.printProps,tostring(enchantment.Duration))
 
-          --[[if #entry.printProps==0 then
+--[[if #entry.printProps==0 then
             if enchantment.LayeredId~=nil then table.insert(entry.printProps,"LayeredId:"..tostring(enchantment.LayeredId)) end
             if enchantment.SpellId~=nil then table.insert(entry.printProps,"SpellId:"..tostring(enchantment.SpellId)) end
             if enchantment.Layer~=nil then table.insert(entry.printProps,"Layer:"..tostring(enchantment.Layer)) end
