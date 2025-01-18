@@ -1461,6 +1461,9 @@ bars({
       --bar.expiryMaxSeconds = 600
       bar.spellLevelDisplay = true
       bar.spellLevelColor = 0xBBBBBBBB
+      bar.buffBorder = true
+      bar.buffBorderColor = 0x99009900
+      bar.buffBorderThickness = 2
       bar.displayCriteria = function(enchantment, spell, entry)
         return ((enchantment.Duration ~= -1) and (SpellFlags.Beneficial + spell.Flags == spell.Flags) and ((not bar.expiryMaxSeconds) or entry.ExpiresAt<bar.expiryMaxSeconds))
       end
@@ -1537,11 +1540,15 @@ bars({
         return a.ClientReceivedAt < b.ClientReceivedAt
       end)
       
-      local windowPos = ImGui.GetWindowPos()
+      local windowPos = ImGui.GetWindowPos()+Vector2.new(5,5)
       local windowSize = ImGui.GetContentRegionAvail()
+      local minX,minY
+      local maxX,maxY
+      local iconSize = Vector2.new(28, 28)
+
       ImGui.BeginChild("ScrollableChild", ImGui.GetContentRegionAvail(), true)
+      
       for i, buff in ipairs(buffs) do
-        local iconSize = Vector2.new(28, 28)
         local cursorStartX,cursorStartY
         local expiryTimer = (buff.ClientReceivedAt + TimeSpan.FromSeconds(buff.StartTime + buff.Duration) - DateTime.UtcNow).TotalSeconds
         local spellLevelSize = ImGui.CalcTextSize(buff.Level)
@@ -1601,6 +1608,19 @@ bars({
             end
           end
         end
+
+        if not minX or minX>cursorStartX then
+          minX = cursorStartX
+        end
+        if not minY or minY>cursorStartY then
+          minY = cursorStartY
+        end
+        if not maxX or maxX<cursorStartX then
+          maxX = cursorStartX
+        end
+        if not maxY or maxY<cursorStartY then
+          maxY = cursorStartY
+        end  
         
         local cursorStart = Vector2.new(cursorStartX,cursorStartY)
         ImGui.GetWindowDrawList().AddRectFilled(cursorStart,cursorStart+iconSize+bar.bufferRect+Vector2.new(0,ImGui.GetTextLineHeight()+spellLevelSize.Y/2),0xAA000000)
@@ -1632,6 +1652,10 @@ bars({
 
       end
       ImGui.EndChild()
+
+      if bar.buffBorder and minX and minY and maxX and maxY then
+        ImGui.GetWindowDrawList().AddRect(Vector2.new(minX-3,minY-3),Vector2.new(maxX+1+iconSize.X+bar.bufferRect.X,maxY+1+iconSize.Y+bar.bufferRect.Y+ImGui.GetTextLineHeight()*1.5),bar.buffBorderColor or 0x99009900,0,0,bar.buffBorderThickness or 2)
+      end
     end
   },
   {
@@ -1645,6 +1669,9 @@ bars({
       --bar.expiryMaxSeconds = 600
       bar.spellLevelDisplay = true
       bar.spellLevelColor = 0xBBBBBBBB
+      bar.buffBorder = true
+      bar.buffBorderColor = 0x99000099
+      bar.buffBorderThickness = 2
       bar.displayCriteria = function(enchantment, spell, entry)
         return ((enchantment.Duration ~= -1) and (not (SpellFlags.Beneficial + spell.Flags == spell.Flags)) and ((not bar.expiryMaxSeconds) or entry.ExpiresAt<bar.expiryMaxSeconds))
       end
@@ -1721,11 +1748,14 @@ bars({
         return a.ClientReceivedAt < b.ClientReceivedAt
       end)
       
-      local windowPos = ImGui.GetWindowPos()
+      local windowPos = ImGui.GetWindowPos()+Vector2.new(5,5)
       local windowSize = ImGui.GetContentRegionAvail()
+      local minX,minY
+      local maxX,maxY
+      local iconSize = Vector2.new(28, 28)
+
       ImGui.BeginChild("ScrollableChild", ImGui.GetContentRegionAvail(), true)
       for i, buff in ipairs(buffs) do
-        local iconSize = Vector2.new(28, 28)
         local cursorStartX,cursorStartY
         local expiryTimer = (buff.ClientReceivedAt + TimeSpan.FromSeconds(buff.StartTime + buff.Duration) - DateTime.UtcNow).TotalSeconds
         local spellLevelSize = ImGui.CalcTextSize(buff.Level)
@@ -1785,7 +1815,20 @@ bars({
             end
           end
         end
-        
+
+        if not minX or minX>cursorStartX then
+          minX = cursorStartX
+        end
+        if not minY or minY>cursorStartY then
+          minY = cursorStartY
+        end
+        if not maxX or maxX<cursorStartX then
+          maxX = cursorStartX
+        end
+        if not maxY or maxY<cursorStartY then
+          maxY = cursorStartY
+        end  
+
         local cursorStart = Vector2.new(cursorStartX,cursorStartY)
         ImGui.GetWindowDrawList().AddRectFilled(cursorStart,cursorStart+iconSize+bar.bufferRect+Vector2.new(0,ImGui.GetTextLineHeight()+spellLevelSize.Y/2),0xAA000000)
 
@@ -1816,6 +1859,9 @@ bars({
 
       end
       ImGui.EndChild()
+      if bar.buffBorder and minX and minY and maxX and maxY then
+        ImGui.GetWindowDrawList().AddRect(Vector2.new(minX-3,minY-3),Vector2.new(maxX+1+iconSize.X+bar.bufferRect.X,maxY+1+iconSize.Y+bar.bufferRect.Y+ImGui.GetTextLineHeight()*1.5),bar.buffBorderColor or 0x99000099,0,0,bar.buffBorderThickness or 2)
+      end
     end
   },
 })
