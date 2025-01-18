@@ -1449,8 +1449,8 @@ bars({
     name = "buffs",
     windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
     init = function(bar)
-      bar.growAxis = "Y"
-      bar.growReverse = true
+      bar.growAxis = "X"
+      bar.growReverse = false
       bar.bufferRect = Vector2.new(10,5)
       bar.iconSpacing = 10
       --bar.expiryMaxSeconds = 600
