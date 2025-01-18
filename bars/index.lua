@@ -238,11 +238,11 @@ for i, bar in ipairs(bars) do
     
     if bar.imguiReset then
       if bar.renderContext==nil then
-        ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(200, 30))
-        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
+        ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(100, 100))
+        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * 40))
       else
-        ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(200, 30))
-        ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or Vector2.new(100 + (i * 10), (i - 1) * (30 + 10)))
+        ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(100, 100))
+        ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or Vector2.new(100 + (i * 10), (i - 1) * 40))
       end
       bar.imguiReset = false
     end

@@ -239,7 +239,7 @@ bars({
     text = function(bar)
       if game.World.Selected == nil or game.World.Selected.ObjectClass ~= ObjectClass.Monster then return "" end
       local dist = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))
-      return dist > bar.minDistance and dist < bar.maxDistance and string.format("%.1f", dist) or ""
+      return dist > bar.minDistance and dist < bar.maxDistance and string.format("%.0f", dist) or ""
     end
   },
   {
@@ -1159,79 +1159,69 @@ bars({
   {
     name = "EnchantmentTracker",
     init = function(bar)
-      bar.clicked = false
+      bar.showItemBuffs = false
+      bar.reverseSort = false
+      bar.sortOption = 0
+      bar.sortingOptions = {
+        "Name",
+        "Id",
+        "Category",
+        "StatModType",
+        "ExpiresAt",
+        "Level",
+        "Power"
+      }
+      function bar.formatSeconds(seconds)
+        local hours = math.floor(seconds / 3600)
+        local minutes = math.floor((seconds % 3600) / 60)
+        local remainingSeconds = seconds % 60
+        if hours>0 then
+          return string.format("%02d:%02d",hours,minutes)
+        else
+          return string.format("%02d:%02d", minutes, remainingSeconds)
+        end
+      end
     end,
+
     render = function(bar)
       local activeSpells = {
         buffs = {},
         debuffs = {}
       }
-      local function checkbox(label)
-        local clicked = false
-        -- Get the position and size for the checkbox
-        local cursor = ImGui.GetCursorScreenPos()
-        local checkboxSize = Vector2.new(24,24)  -- Size of the checkbox
-        local padding = Vector2.new(0,5)        -- Space between checkbox and label
-    
-        -- Calculate the bounding box for the checkbox
-        local mouse = ImGui.GetMousePos()
-        local isHovered = mouse.X >= cursor.X and mouse.X <= cursor.X + checkboxSize.X and
-                          mouse.Y >= cursor.Y and mouse.Y <= cursor.Y + checkboxSize.Y
-    
-        -- Handle input
-        if isHovered and ImGui.IsMouseClicked(0) then
-          bar.clicked = not bar.clicked
-        end
-        
-        local drawlist=ImGui.GetWindowDrawList()
-        -- Draw the checkbox
-        ImGui.InvisibleButton("##checkbox", checkboxSize)
-        if bar.clicked then
-          drawlist.AddRectFilled(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.CheckMark))
-        else
-          drawlist.AddRect(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.Border))
-        end
-    
-        -- Draw the label
-        ImGui.SetCursorScreenPos(Vector2.new(cursor.X + checkboxSize.X + padding.X,cursor.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2))
-        ImGui.Text(label)
-        ImGui.SetCursorScreenPos(Vector2.new(cursor.X,cursor.Y+checkboxSize.Y))
-        
-    
-        return clicked
-      end
-
-      if checkbox("Show Item Buffs") then
-        print("clicky")
-      end
-    
       ---@param enchantment Enchantment
-      for _, enchantment in ipairs(game.Character.AllEnchantments()) do
+      for _, enchantment in ipairs(game.Character.ActiveEnchantments()) do
         ---@type Spell
         local spell = game.Character.SpellBook.Get(enchantment.SpellId)
-        if bar.clicked or enchantment.Duration~=-1 then
+        if bar.showItemBuffs or enchantment.Duration~=-1 then
           local entry = {}
-          entry.printProps = {}
-          entry.id = spell.Id or "No spell.Id"
-          entry.icon = spell.Icon or 9914
-          entry.power = enchantment.Power
-          entry.buff = (SpellFlags.Beneficial + spell.Flags == spell.Flags)
-          entry.category = spell.Category or "No spell.category"
+          --entry.printProps = {}
+          entry.Name = spell.Name or "Unknown"
+          entry.Id = spell.Id or "No spell.Id"
+          entry.Category = enchantment.Category or spell.Category or "No category"
+          entry.StatModType = spell.StatModType
+          entry.Duration = enchantment.Duration
+          entry.Level = spell.Level or "No spell.Level"
+          entry.Power = enchantment.Power
+          
+          entry.ClientReceivedAt = enchantment.ClientReceivedAt
+          entry.Duration = enchantment.Duration
+          entry.StartTime = enchantment.StartTime
+          if entry.Duration>-1 then
+            entry.ExpiresAt = (entry.ClientReceivedAt + TimeSpan.FromSeconds(entry.StartTime + entry.Duration)-DateTime.UtcNow).TotalSeconds 
+          else 
+            entry.ExpiresAt = 999999
+          end
+
+          entry.casterId = enchantment.CasterId
           entry.displayOrder = spell.DisplayOrder or 9999
-          entry.clientReceivedAt = enchantment.ClientReceivedAt
-          entry.name = spell.Name or "Unknown"
+          entry.isBuff = (SpellFlags.Beneficial + spell.Flags == spell.Flags)
+          entry.icon = spell.Icon or 9914
+
 
           local function hasFlag(object, flag)
             return (object.Flags + flag == object.Flags)
           end
-          local mathSign
-          if hasFlag(enchantment, EnchantmentFlags.Additive) then
-            mathSign = "+"
-          elseif hasFlag(enchantment, EnchantmentFlags.Multiplicative) then
-            mathSign = "*"
-          else
-            mathSign = "?"
-          end
+
 
           local statKey=spell.StatModKey
           if spell.StatModAttribute~=AttributeId.Undef then
@@ -1244,25 +1234,208 @@ bars({
             entry.stat=tostring(IntId.Undef + statKey)
           elseif spell.StatModFloatProp~=FloatId.Undef then
             entry.stat=tostring(FloatId.Undef + statKey)
+          else
+            entry.stat=tostring(enchantment.Category)
           end
 
-          if hasFlag(enchantment, EnchantmentFlags.SingleStat) then
-            if hasFlag(enchantment, EnchantmentFlags.AttackSkills) then
-              table.insert(entry.printProps, "Attack Skill " .. mathSign .. enchantment.StatValue)
-            elseif hasFlag(enchantment, EnchantmentFlags.DefenseSkills) then
-              table.insert(entry.printProps, "Defense Skill " .. mathSign .. enchantment.StatValue)
-            elseif entry.stat then
-              table.insert(entry.printProps, tostring(entry.stat) .. mathSign .. enchantment.StatValue)
-            else
-              table.insert(entry.printProps,tostring(entry.category) .. mathSign .. enchantment.StatValue)
-            end
-          elseif hasFlag(enchantment, EnchantmentFlags.MultipleStat) then
-            table.insert(entry.printProps,tostring(entry.category) .. mathSign .. enchantment.StatValue)
+          if hasFlag(enchantment, EnchantmentFlags.Additive) then
+            entry.printProp =  enchantment.StatValue>0 and ("+"..enchantment.StatValue) or enchantment.StatValue
+          elseif hasFlag(enchantment, EnchantmentFlags.Multiplicative) then
+            local percent=enchantment.StatValue-1
+            entry.printProp =  (percent>0 and ("+"..string.format("%.0d",percent*100)) or string.format("%.0d",percent*100)).."%%"
           end
-          --]]
-          table.insert(entry.printProps,tostring(enchantment.Duration))
+
+
+          local key
+          if entry.isBuff then
+            key = "buffs"
+          else
+            key = "debuffs"
+          end
+
+          local added = false
+          for i, buffOrDebuff in ipairs(activeSpells[key]) do
+            if buffOrDebuff.Category == entry.Category then
+              if buffOrDebuff.Power == entry.Power and buffOrDebuff.ClientReceivedAt < entry.ClientReceivedAt then --
+                activeSpells[key][i] = entry
+                added = true
+                break
+              elseif buffOrDebuff.Power < entry.Power then
+                activeSpells[key][i] = entry
+                added = true
+                break
+              end
+            end
+          end
+          if added == false then
+            table.insert(activeSpells[key], entry)
+          end
+        end
+      end
+
+      local sortKey=bar.sortingOptions[bar.sortOption+1]
+      for i,buffsOrDebuffs in pairs(activeSpells) do
+        table.sort(buffsOrDebuffs, function(a, b)
+          if bar.reverseSort then
+            return a[sortKey] > b[sortKey]
+          else
+            return a[sortKey] < b[sortKey]
+          end
+        end)
+      end
+
+      local checkboxSize = Vector2.new(24,24) 
+      local reservedHeight = checkboxSize.Y + ImGui.GetStyle().ChildBorderSize*2
+
+      -- Calculate the available space for the table
+      local availableSize = ImGui.GetContentRegionAvail()
+      local tableSize = Vector2.new(availableSize.X, availableSize.Y - reservedHeight)
+
+      -- Render the table
+      if ImGui.BeginTable("Buffs | Debuffs", 2, _imgui.ImGuiTableFlags.SizingStretchSame+_imgui.ImGuiTableFlags.Resizable, tableSize) then
+        -- Table logic (columns, rows, etc.)
+        ImGui.TableSetupColumn(" Buffs", _imgui.ImGuiTableColumnFlags.WidthStretch)
+        ImGui.TableSetupColumn(" Debuffs", _imgui.ImGuiTableColumnFlags.WidthStretch)
+        ImGui.TableHeadersRow()
+
+        for column, buffsOrDebuffs in ipairs({activeSpells.buffs, activeSpells.debuffs}) do
+          ImGui.TableNextColumn()
           
-          if #entry.printProps==0 then
+          -- Scrollable child
+          local borderPadding = ImGui.GetStyle().FrameBorderSize * 2 
+          local columnWidth=ImGui.GetColumnWidth()
+          local columnHeight = ImGui.GetContentRegionAvail().Y - reservedHeight - borderPadding
+
+          ImGui.BeginChild("ScrollableColumn##" .. column, Vector2.new(columnWidth, columnHeight), true)
+          for _, buffOrDebuff in ipairs(buffsOrDebuffs) do
+            
+            local cursorStart=ImGui.GetCursorScreenPos()
+            local iconSize = Vector2.new(28, 28)
+            local printProp = buffOrDebuff.printProp
+
+            local expiryTimer
+            local backgroundColor=ImGui.GetColorU32(_imgui.ImGuiCol.ChildBg)
+            if buffOrDebuff.Duration>-1 then
+              expiryTimer=(buffOrDebuff.ClientReceivedAt + TimeSpan.FromSeconds(buffOrDebuff.StartTime + buffOrDebuff.Duration)-DateTime.UtcNow).TotalSeconds
+              ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram,buffOrDebuff.isBuff and 0xAA006600 or 0xAA000066)
+              ImGui.PushStyleColor(_imgui.ImGuiCol.FrameBg, ImGui.GetColorU32(backgroundColor))
+              ImGui.ProgressBar(expiryTimer/buffOrDebuff.Duration,Vector2.new(ImGui.GetColumnWidth(),iconSize.Y+ImGui.GetStyle().CellPadding.Y),"")
+              ImGui.PopStyleColor(2)
+            end
+ 
+            ImGui.SetCursorScreenPos(cursorStart)
+            ImGui.TextureButton("##" .. buffOrDebuff.Id, GetOrCreateTexture(buffOrDebuff.icon), iconSize)
+            if ImGui.IsItemHovered() then
+              if buffOrDebuff.casterId~=game.CharacterId and buffOrDebuff.casterId~=0 and
+                 buffOrDebuff.casterId~=nil and game.World.Exists(buffOrDebuff.casterId) then--]]
+                ImGui.BeginTooltip()
+                
+                local caster=game.World.Get(buffOrDebuff.casterId)
+                ImGui.Text("Granted by\n"..caster.Name)
+                ImGui.TextureButton("##" .. buffOrDebuff.Id-buffOrDebuff.casterId,GetOrCreateTexture(caster.Value(DataId.Icon)),iconSize)
+                ImGui.EndTooltip()
+              end
+            end
+
+            local expiryTimerYAdjust
+            if expiryTimer then
+              ImGui.SetWindowFontScale(1)
+              expiryTimerYAdjust=ImGui.GetFontSize()/2
+              ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()+Vector2.new(3,0))
+              local cursorStartDurationText=ImGui.GetCursorScreenPos()-Vector2.new(3,expiryTimerYAdjust)
+              local durationTextSize=ImGui.CalcTextSize(bar.formatSeconds(expiryTimer))
+              ImGui.GetWindowDrawList().AddRectFilled(cursorStartDurationText,cursorStartDurationText+durationTextSize+Vector2.new(3,0),0xAA000000)
+              ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()-Vector2.new(0,expiryTimerYAdjust))
+              ImGui.Text(bar.formatSeconds(expiryTimer))
+              ImGui.SetWindowFontScale(bar.fontScale or 1)
+            end
+
+            local cursorPostIcon=cursorStart+Vector2.new(iconSize.X, 0)
+            local visibleText = tostring(printProp):gsub("%%%%", "%%")
+            local textSize=ImGui.CalcTextSize(visibleText)
+
+            local cursorForName=Vector2.new(cursorPostIcon.X + 5,cursorPostIcon.Y + iconSize.Y/2 - ImGui.GetFontSize()/2)
+            ImGui.SetCursorScreenPos(cursorForName)
+            ImGui.PushClipRect(cursorForName,Vector2.new(cursorForName.X+ImGui.GetContentRegionAvail().X-textSize.X-5,cursorForName.Y+iconSize.Y+ImGui.GetStyle().CellPadding.Y),true)
+            ImGui.Text(buffOrDebuff.Name)
+            ImGui.PopClipRect()
+
+            local cursorForProp=Vector2.new(cursorStart.X+ImGui.GetContentRegionAvail().X-textSize.X,cursorStart.Y + iconSize.Y/2 - ImGui.GetFontSize()/2)
+            ImGui.SetCursorScreenPos(cursorForProp)
+            ImGui.PushStyleColor(_imgui.ImGuiCol.Text,buffOrDebuff.isBuff and 0xFF00FF00 or 0xFF0000FF)
+            ImGui.Text(printProp)
+            ImGui.PopStyleColor()
+
+            ImGui.SetCursorScreenPos(Vector2.new(cursorStart.X,cursorStart.Y+iconSize.Y+ImGui.GetStyle().CellPadding.Y+(expiryTimerYAdjust or 0)))
+          end
+          ImGui.EndChild()
+
+        end
+        ImGui.EndTable()
+      end
+
+      local cursorForCheckbox = ImGui.GetCursorScreenPos()
+      local function checkbox(label,setting,plusOrMinus)
+        -- Get the position and size for the checkbox
+        local cursor = ImGui.GetCursorScreenPos()
+
+        -- Calculate the bounding box for the checkbox
+        local mouse = ImGui.GetMousePos()
+        local isHovered = mouse.X >= cursor.X and mouse.X <= cursor.X + checkboxSize.X and
+                          mouse.Y >= cursor.Y and mouse.Y <= cursor.Y + checkboxSize.Y
+
+        -- Handle input
+        if isHovered and ImGui.IsMouseClicked(0) then
+          bar[setting] = not bar[setting]
+        end
+
+        local drawlist=ImGui.GetWindowDrawList()
+        -- Draw the checkbox
+        ImGui.InvisibleButton("##checkbox"..setting, checkboxSize)
+
+        if plusOrMinus then
+          drawlist.AddLine(cursor + Vector2.new(3,checkboxSize.Y/2), cursor + Vector2.new(checkboxSize.X-3,checkboxSize.Y/2), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
+          if not bar[setting] then
+            drawlist.AddLine(cursor + Vector2.new(checkboxSize.X/2,3), cursor + Vector2.new(checkboxSize.X/2,checkboxSize.Y-3), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
+          end
+        elseif bar[setting] then
+          drawlist.AddRectFilled(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.CheckMark))
+        else
+          drawlist.AddRect(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.Border))
+        end
+    
+
+        ImGui.SetCursorScreenPos(Vector2.new(cursorForCheckbox.X + checkboxSize.X + 5, cursorForCheckbox.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2))
+        ImGui.Text(label)
+
+        return bar[setting]
+      end
+      if checkbox("Show Item Buffs","showItemBuffs") then end
+
+      local cursorForOptions=Vector2.new(ImGui.GetWindowPos().X+ImGui.GetWindowWidth()/2 + 5,cursorForCheckbox.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2)
+      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X-checkboxSize.X,cursorForCheckbox.Y+checkboxSize.Y/2-ImGui.GetFontSize()/2))
+      ImGui.Text("Sort by: ")
+      ImGui.SameLine()
+      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X+checkboxSize.X-5,cursorForCheckbox.Y))
+
+      if checkbox("","reverseSort",true) then end
+      ImGui.SameLine()
+      ImGui.SetNextItemWidth(-1)
+      ImGui.SetCursorScreenPos(cursorForOptions+Vector2.new(checkboxSize.X*2,0))
+      local changed, newIndex = ImGui.Combo("##sortOption",bar.sortOption,bar.sortingOptions,#bar.sortingOptions)
+      if changed then
+        bar.sortOption=newIndex
+      end
+    end
+  }
+})
+
+return bars
+
+
+          --table.insert(entry.printProps,tostring(enchantment.Duration))
+
+          --[[if #entry.printProps==0 then
             if enchantment.LayeredId~=nil then table.insert(entry.printProps,"LayeredId:"..tostring(enchantment.LayeredId)) end
             if enchantment.SpellId~=nil then table.insert(entry.printProps,"SpellId:"..tostring(enchantment.SpellId)) end
             if enchantment.Layer~=nil then table.insert(entry.printProps,"Layer:"..tostring(enchantment.Layer)) end
@@ -1323,86 +1496,4 @@ bars({
             if spell.Proportion~=nil then table.insert(entry.printProps,"Proportion:"..tostring(spell.Proportion)) end
             if spell.LossPercent~=nil then table.insert(entry.printProps,"LossPercent:"..tostring(spell.LossPercent)) end
             if spell.SourceLoss~=nil then table.insert(entry.printProps,"SourceLoss:"..tostring(spell.SourceLoss)) end
-          end
-
-          local key
-          if entry.buff then
-            key = "buffs"
-          else
-            key = "debuffs"
-          end
-
-          local added = false
-          for i, buff in ipairs(activeSpells[key]) do
-            if buff.category == entry.category then
-              if buff.power == entry.power and buff.ClientReceivedAt < entry.clientReceivedAt then --
-                activeSpells[key][i] = entry
-                added = true
-                break
-              elseif buff.power < entry.power then
-                activeSpells[key][i] = entry
-                added = true
-                break
-              end
-            end
-          end
-          if added == false then
-            table.insert(activeSpells[key], entry)
-          end
-        end
-      end
-
-      table.sort(activeSpells.buffs, function(a, b)
-        return a.displayOrder < b.displayOrder
-      end)
-      table.sort(activeSpells.debuffs, function(a, b)
-        return a.displayOrder < b.displayOrder
-      end)
-
-      if ImGui.BeginTable("Buffs and Debuffs", 2) then
-        -- Header row
-        ImGui.TableSetupColumn("Buffs")
-        ImGui.TableSetupColumn("Debuffs")
-        ImGui.TableHeadersRow()
-        ImGui.TableNextRow()
-
-        ImGui.TableSetColumnIndex(0)
-        for i, buff in ipairs(activeSpells.buffs) do
-          local cursorPos=ImGui.GetCursorScreenPos()
-          local iconSize=Vector2.new(24,24)
-          ImGui.TextureButton("##" .. buff.id .. " " .. buff.icon, GetOrCreateTexture(buff.icon), iconSize)
-          if ImGui.IsItemHovered() then
-            ImGui.BeginTooltip()
-            for _, prop in ipairs(buff.printProps) do
-              ImGui.Text(prop)
-            end
-            ImGui.EndTooltip()
-          end
-          ImGui.SameLine()
-          ImGui.SetCursorScreenPos(cursorPos+Vector2.new(iconSize.X+5,iconSize.Y/2-ImGui.GetFontSize()/2))
-          ImGui.Text(buff.name)--.."\nnewtext")
-        end
-
-        ImGui.TableSetColumnIndex(1)
-        for i, debuff in ipairs(activeSpells.debuffs) do
-          local cursorPos=ImGui.GetCursorScreenPos()
-          local iconSize=Vector2.new(24,24)
-          ImGui.TextureButton("##" .. debuff.id .. " " .. debuff.icon, GetOrCreateTexture(debuff.icon),iconSize)
-          if ImGui.IsItemHovered() then
-            ImGui.BeginTooltip()
-            for _, prop in ipairs(debuff.printProps) do
-              ImGui.Text(prop)
-            end
-            ImGui.EndTooltip()
-          end
-          ImGui.SameLine()
-          ImGui.SetCursorScreenPos(cursorPos+Vector2.new(iconSize.X+5,iconSize.Y/2-ImGui.GetFontSize()/2))
-          ImGui.Text(debuff.name)
-        end
-        ImGui.EndTable()
-      end
-    end
-  }
-})
-
-return bars
+          end--]]
