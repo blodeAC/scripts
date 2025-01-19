@@ -1207,7 +1207,7 @@ bars({
             end
           elseif bar.rememberedSlots[slot] and bar.rememberedSlots[slot]~=slot then
             drawlist.AddRectFilled(start, start + cellSize, 0x880000FF)
-          elseif slottedItem==slot then
+          elseif slottedItem==slot and slot~="None" then
             ImGui.SetCursorScreenPos(start)
             local mouse = ImGui.GetMousePos()
             local isHovered = mouse.X >= start.X and mouse.X <= start.X + cellSize.X and
