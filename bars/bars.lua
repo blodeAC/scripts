@@ -468,9 +468,7 @@ bars({
     icon = 0x060011F7,
     label = "T    \n\n",
     text = function(bar) return "Trophy" end,
-    init = function(bar)
-      bar:func()
-    end,
+    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "trophies", game.Character,
         function() --left click
@@ -507,9 +505,7 @@ bars({
     icon = 0x060011F7,
     label = "S    \n\n",
     text = function(bar) return "Salvage" end,
-    init = function(bar)
-      bar:func()
-    end,
+    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "salvage", game.Character, function()
         local count = 1
@@ -532,9 +528,7 @@ bars({
     icon = 0x060011F7,
     label = "G    \n\n",
     text = function(bar) return "Gem" end,
-    init = function(bar)
-      bar:func()
-    end,
+    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "gems", game.Character, function()
         local count = 1
@@ -557,9 +551,7 @@ bars({
     icon = 0x060011F7,
     label = "C    \n\n",
     text = function(bar) return "C" end,
-    init = function(bar)
-      bar:func()
-    end,
+    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "comps", game.Character, function()
         local count = 1
@@ -582,9 +574,7 @@ bars({
     icon = 0x060011F7,
     label = "V    \n\n",
     text = function(bar) return "V" end,
-    init = function(bar)
-      bar:func()
-    end,
+    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "vendor", game.Character, function()
         local count = 1
@@ -661,7 +651,6 @@ bars({
     fontScale_min = 2,
     fontScale_max = 3,
     fontScale_crit = 4,
-    text = function(bar) return " " end,
     fontColorPositive_BBGGRRstring = "FFFFFF",
     fontColorNegative_BBGGRRstring = "0000FF",
     fadeDuration = 2, -- How long the text stays on screen
@@ -683,10 +672,8 @@ bars({
         ---@diagnostic disable:inject-field
 
         local damage = nil
-        local mobName
         local crit = false
         if e.Data.Name ~= nil then
-          mobName = e.Data.Name
           damage = e.Data.DamageDone
         elseif (e.Data.Type == LogTextType.Magic or e.Data.Type == LogTextType.CombatSelf) then
           local r = Regex.new(
@@ -748,7 +735,6 @@ bars({
     icon = 0x06006AEE,
     fontScale_min = 2,
     fontScale_max = 3,
-    text = function(bar) return " " end,
     fontColorPositive_BBGGRRstring = "00FF00",
     fontColorNegative_BBGGRRstring = "0000FF",
     fadeDuration = 2, -- How long the text stays on screen
@@ -1115,7 +1101,8 @@ bars({
         end
       end
       bar:scan()
-
+      
+      ---@param updateInstance Qualities_UpdateInstanceID_S2C_EventArgs
       bar.watcher = function(updateInstance)
         local objectId = updateInstance.Data.ObjectId
         local weenie = game.World.Get(objectId)
@@ -1128,6 +1115,7 @@ bars({
           for _ in game.ActionQueue.Queue do
             return
           end
+          sleep(333)
           bar:scan()
         elseif (updateInstance.Data.Key == InstanceId.Wielder) then
           for _ in game.ActionQueue.ImmediateQueue do
@@ -1136,6 +1124,7 @@ bars({
           for _ in game.ActionQueue.Queue do
             return
           end
+          sleep(333)
           bar:scan()
         end
       end
@@ -1694,69 +1683,3 @@ bars({
 })
 
 return bars
-
-
---table.insert(entry.printProps,tostring(enchantment.Duration))
-
---[[if #entry.printProps==0 then
-            if enchantment.LayeredId~=nil then table.insert(entry.printProps,"LayeredId:"..tostring(enchantment.LayeredId)) end
-            if enchantment.SpellId~=nil then table.insert(entry.printProps,"SpellId:"..tostring(enchantment.SpellId)) end
-            if enchantment.Layer~=nil then table.insert(entry.printProps,"Layer:"..tostring(enchantment.Layer)) end
-            if enchantment.HasSpellSetId~=nil then table.insert(entry.printProps,"HasSpellSetId:"..tostring(enchantment.HasSpellSetId)) end
-            if enchantment.Category~=nil then table.insert(entry.printProps,"Category:"..tostring(enchantment.Category)) end
-            if enchantment.Power~=nil then table.insert(entry.printProps,"Power:"..tostring(enchantment.Power)) end
-            if enchantment.StartTime~=nil then table.insert(entry.printProps,"StartTime:"..tostring(enchantment.StartTime)) end
-            if enchantment.Duration~=nil then table.insert(entry.printProps,"Duration:"..tostring(enchantment.Duration)) end
-            if enchantment.CasterId~=nil then table.insert(entry.printProps,"CasterId:"..game.World.Get(enchantment.CasterId).Name) end
-            if enchantment.DegradeModifier~=nil then table.insert(entry.printProps,"DegradeModifier:"..tostring(enchantment.DegradeModifier)) end
-            if enchantment.DegradeLimit~=nil then table.insert(entry.printProps,"DegradeLimit:"..tostring(enchantment.DegradeLimit)) end
-            if enchantment.LastTimeDegraded~=nil then table.insert(entry.printProps,"LastTimeDegraded:"..tostring(enchantment.LastTimeDegraded)) end
-            if enchantment.Flags~=nil then table.insert(entry.printProps,"Flags:"..tostring(enchantment.Flags)) end
-            if enchantment.StatKey~=nil then table.insert(entry.printProps,"StatKey:"..tostring(enchantment.StatKey)) end
-            if enchantment.StatValue~=nil then table.insert(entry.printProps,"StatValue:"..tostring(enchantment.StatValue)) end
-            if enchantment.SpellSetId~=nil then table.insert(entry.printProps,"SpellSetId:"..tostring(enchantment.SpellSetId)) end
-            if enchantment.Effect~=nil then table.insert(entry.printProps,"Effect:"..tostring(enchantment.Effect)) end
-            if enchantment.ExpiresAt~=nil then table.insert(entry.printProps,"ExpiresAt:"..tostring(enchantment.ExpiresAt)) end
-            if enchantment.ClientReceivedAt~=nil then table.insert(entry.printProps,"ClientReceivedAt:"..tostring(enchantment.ClientReceivedAt)) end
-            table.insert(entry.printProps,"---------------------")
-            if spell.Id~=nil then table.insert(entry.printProps,"Id:"..tostring(spell.Id)) end
-            if spell.Name~=nil then table.insert(entry.printProps,"Name:"..tostring(spell.Name)) end
-            if spell.Description~=nil then table.insert(entry.printProps,"Description:"..tostring(spell.Description)) end
-            if spell.School~=nil then table.insert(entry.printProps,"School:"..tostring(spell.School)) end
-            if spell.Icon~=nil then table.insert(entry.printProps,"Icon:"..tostring(spell.Icon)) end
-            if spell.Category~=nil then table.insert(entry.printProps,"Category:"..tostring(spell.Category)) end
-            if spell.Flags~=nil then table.insert(entry.printProps,"Flags:"..tostring(spell.Flags)) end
-            if spell.Power~=nil then table.insert(entry.printProps,"Power:"..tostring(spell.Power)) end
-            if spell.SpellEconomyMod~=nil then table.insert(entry.printProps,"SpellEconomyMod:"..tostring(spell.SpellEconomyMod)) end
-            if spell.FormulaVersion~=nil then table.insert(entry.printProps,"FormulaVersion:"..tostring(spell.FormulaVersion)) end
-            if spell.ComponentLoss~=nil then table.insert(entry.printProps,"ComponentLoss:"..tostring(spell.ComponentLoss)) end
-            if spell.MetaSpellType~=nil then table.insert(entry.printProps,"MetaSpellType:"..tostring(spell.MetaSpellType)) end
-            if spell.MetaSpellId~=nil then table.insert(entry.printProps,"MetaSpellId:"..tostring(spell.MetaSpellId)) end
-            if spell.Duration~=nil then table.insert(entry.printProps,"Duration:"..tostring(spell.Duration)) end
-            if spell.CasterEffect~=nil then table.insert(entry.printProps,"CasterEffect:"..tostring(spell.CasterEffect)) end
-            if spell.TargetEffect~=nil then table.insert(entry.printProps,"TargetEffect:"..tostring(spell.TargetEffect)) end
-            if spell.FizzleEffect~=nil then table.insert(entry.printProps,"FizzleEffect:"..tostring(spell.FizzleEffect)) end
-            if spell.RecoveryInterval~=nil then table.insert(entry.printProps,"RecoveryInterval:"..tostring(spell.RecoveryInterval)) end
-            if spell.RecoveryAmount~=nil then table.insert(entry.printProps,"RecoveryAmount:"..tostring(spell.RecoveryAmount)) end
-            if spell.DisplayOrder~=nil then table.insert(entry.printProps,"DisplayOrder:"..tostring(spell.DisplayOrder)) end
-            if spell.Level~=nil then table.insert(entry.printProps,"Level:"..tostring(spell.Level)) end
-            if spell.StatModType~=nil then table.insert(entry.printProps,"StatModType:"..tostring(spell.StatModType)) end
-            if spell.StatModKey~=nil then table.insert(entry.printProps,"StatModKey:"..tostring(spell.StatModKey)) end
-            if spell.StatModVal~=nil then table.insert(entry.printProps,"StatModVal:"..tostring(spell.StatModVal)) end
-            if spell.StatModAttribute~=nil then table.insert(entry.printProps,"StatModAttribute:"..tostring(spell.StatModAttribute)) end
-            if spell.StatModVital~=nil then table.insert(entry.printProps,"StatModVital:"..tostring(spell.StatModVital)) end
-            if spell.StatModSkill~=nil then table.insert(entry.printProps,"StatModSkill:"..tostring(spell.StatModSkill)) end
-            if spell.StatModIntProp~=nil then table.insert(entry.printProps,"StatModIntProp:"..tostring(spell.StatModIntProp)) end
-            if spell.StatModFloatProp~=nil then table.insert(entry.printProps,"StatModFloatProp:"..tostring(spell.StatModFloatProp)) end
-            if spell.DamageType~=nil then table.insert(entry.printProps,"DamageType:"..tostring(spell.DamageType)) end
-            if spell.BaseIntensity~=nil then table.insert(entry.printProps,"BaseIntensity:"..tostring(spell.BaseIntensity)) end
-            if spell.Variance~=nil then table.insert(entry.printProps,"Variance:"..tostring(spell.Variance)) end
-            if spell.WeenieClassId~=nil then table.insert(entry.printProps,"WeenieClassId:"..tostring(spell.WeenieClassId)) end
-            if spell.VitalDamageType~=nil then table.insert(entry.printProps,"VitalDamageType:"..tostring(spell.VitalDamageType)) end
-            if spell.Boost~=nil then table.insert(entry.printProps,"Boost:"..tostring(spell.Boost)) end
-            if spell.BoostVariance~=nil then table.insert(entry.printProps,"BoostVariance:"..tostring(spell.BoostVariance)) end
-            if spell.Source~=nil then table.insert(entry.printProps,"Source:"..tostring(spell.Source)) end
-            if spell.Proportion~=nil then table.insert(entry.printProps,"Proportion:"..tostring(spell.Proportion)) end
-            if spell.LossPercent~=nil then table.insert(entry.printProps,"LossPercent:"..tostring(spell.LossPercent)) end
-            if spell.SourceLoss~=nil then table.insert(entry.printProps,"SourceLoss:"..tostring(spell.SourceLoss)) end
-          end--]]
