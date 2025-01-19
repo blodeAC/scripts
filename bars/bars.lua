@@ -212,12 +212,12 @@ local function renderBuffs(bar)
     local expiryTimer = (buff.ClientReceivedAt + TimeSpan.FromSeconds(buff.StartTime + buff.Duration) - DateTime.UtcNow).TotalSeconds
     local spellLevelSize = ImGui.CalcTextSize(buff.Level)
 
-    local reservedPerIconX = iconSize.X + bar.bufferRect.X/2 + bar.iconSpacing
-    local reservedPerIconY = iconSize.Y + bar.bufferRect.Y/2 + bar.iconSpacing + ImGui.GetTextLineHeight()*1.5
+    local reservedPerIconX = iconSize.X + bar.bufferRect.X + bar.iconSpacing
+    local reservedPerIconY = iconSize.Y + bar.bufferRect.Y + bar.iconSpacing + ImGui.GetTextLineHeight()*1.5
     if bar.growAxis == "X" then
       if not bar.growReverse then 
         cursorStartX = windowPos.X + (i-1)*reservedPerIconX
-        cursorStartY = windowPos.Y
+        cursorStartY = windowPos.Y + (bar.growAlignmentFlip and windowSize.Y-reservedPerIconY or 0)
         if i>1 and (cursorStartX + reservedPerIconX) > (windowPos.X+windowSize.X) then
           local iconsPerRow = math.floor(windowSize.X / reservedPerIconX) 
           local rowOffset=1
@@ -225,11 +225,11 @@ local function renderBuffs(bar)
             rowOffset=rowOffset+1
           end
           cursorStartX = windowPos.X + math.floor((i-1)-iconsPerRow*rowOffset+iconsPerRow)*reservedPerIconX
-          cursorStartY = windowPos.Y + (rowOffset-1)*reservedPerIconY
+          cursorStartY = windowPos.Y + (bar.growAlignmentFlip and windowSize.Y-reservedPerIconY or 0) + (bar.growAlignmentFlip and -rowOffset+1 or rowOffset-1)*reservedPerIconY
         end
       else --reverse X
         cursorStartX = windowPos.X + windowSize.X - i*reservedPerIconX
-        cursorStartY = windowPos.Y
+        cursorStartY = windowPos.Y + (bar.growAlignmentFlip and windowSize.Y-reservedPerIconY or 0)
         if i>1 and cursorStartX < windowPos.X then
           local iconsPerRow = math.floor(windowSize.X / reservedPerIconX) 
           local rowOffset=1
@@ -237,12 +237,12 @@ local function renderBuffs(bar)
             rowOffset=rowOffset+1
           end
           cursorStartX = windowPos.X + windowSize.X - math.floor(i-iconsPerRow*rowOffset+iconsPerRow)*reservedPerIconX
-          cursorStartY = windowPos.Y + (rowOffset-1)*reservedPerIconY
+          cursorStartY = windowPos.Y + (bar.growAlignmentFlip and windowSize.Y-reservedPerIconY or 0) + (bar.growAlignmentFlip and -rowOffset+1 or rowOffset-1)*reservedPerIconY
         end
       end
-    else --growAxis Y
+    elseif bar.growAxis=="Y" then --growAxis Y
       if not bar.growReverse then 
-        cursorStartX = windowPos.X 
+        cursorStartX = windowPos.X + (bar.growAlignmentFlip and windowSize.X-reservedPerIconX or 0)
         cursorStartY = windowPos.Y + (i-1)*reservedPerIconY
         if i>1 and (cursorStartY + reservedPerIconY) > (windowPos.Y+windowSize.Y) then
           local iconsPerCol = math.floor(windowSize.Y / reservedPerIconY) 
@@ -250,11 +250,11 @@ local function renderBuffs(bar)
           while colOffset<i and iconsPerCol*colOffset<i do
             colOffset=colOffset+1
           end
-          cursorStartX = windowPos.X + (colOffset-1)*reservedPerIconX
-          cursorStartY = windowPos.Y + (colOffset-1)*math.floor((i-1)-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
+          cursorStartX = windowPos.X + (bar.growAlignmentFlip and windowSize.X-reservedPerIconX or 0) + (bar.growAlignmentFlip and -colOffset+1 or colOffset-1)*reservedPerIconX
+          cursorStartY = windowPos.Y + math.floor((i-1) - iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
         end
       else -- reverse Y
-        cursorStartX = windowPos.X 
+        cursorStartX = windowPos.X + (bar.growAlignmentFlip and windowSize.X-reservedPerIconX or 0)
         cursorStartY = windowPos.Y + windowSize.Y - i*reservedPerIconY
         if i>1 and cursorStartY < windowPos.Y then
           local iconsPerCol = math.floor(windowSize.Y / reservedPerIconY) 
@@ -262,8 +262,8 @@ local function renderBuffs(bar)
           while colOffset<i and iconsPerCol*colOffset<i do
             colOffset=colOffset+1
           end
-          cursorStartX = windowPos.X + (colOffset-1)*reservedPerIconX
-          cursorStartY = windowPos.Y + windowSize.Y - (colOffset-1)*math.floor(i-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
+          cursorStartX = windowPos.X + (bar.growAlignmentFlip and windowSize.X-reservedPerIconX or 0) + (bar.growAlignmentFlip and -colOffset+1 or colOffset-1)*reservedPerIconX
+          cursorStartY = windowPos.Y + windowSize.Y - math.floor(i-iconsPerCol*colOffset+iconsPerCol)*reservedPerIconY
         end
       end
     end
@@ -312,7 +312,7 @@ local function renderBuffs(bar)
   end
   ImGui.EndChild()
   if bar.buffBorder and minX and minY and maxX and maxY then
-    ImGui.GetWindowDrawList().AddRect(Vector2.new(minX-3,minY-3),Vector2.new(maxX+1+iconSize.X+bar.bufferRect.X,maxY+1+iconSize.Y+bar.bufferRect.Y+ImGui.GetTextLineHeight()*1.5),bar.buffBorderColor or 0x99000099,0,0,bar.buffBorderThickness or 2)
+    ImGui.GetWindowDrawList().AddRect(Vector2.new(minX-3,minY-3),Vector2.new(maxX+3+iconSize.X+bar.bufferRect.X,maxY+3+iconSize.Y+bar.bufferRect.Y+ImGui.GetTextLineHeight()*1.5),bar.buffBorderColor or 0x99000099,0,0,bar.buffBorderThickness or 2)
   end
 end
 
@@ -1670,8 +1670,9 @@ bars({
     name = "buffs",
     windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
     init = function(bar)
-      bar.growAxis = "X"
-      bar.growReverse = false
+      bar.growAxis = "X"             -- "X" or "Y"
+      bar.growAlignmentFlip = true   -- uses same growAxis, but flips alignment to other side of window
+      bar.growReverse = true
       bar.bufferRect = Vector2.new(10,5)
       bar.iconSpacing = 10
       --bar.expiryMaxSeconds = 600
@@ -1703,8 +1704,9 @@ bars({
     name = "debuffs",
     windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
     init = function(bar)
-      bar.growAxis = "X"
-      bar.growReverse = false
+      bar.growAxis = "X"             -- "X" or "Y"
+      bar.growAlignmentFlip = true   -- uses same growAxis, but flips alignment to other side of window
+      bar.growReverse = false        
       bar.bufferRect = Vector2.new(10,5)
       bar.iconSpacing = 10
       --bar.expiryMaxSeconds = 600
