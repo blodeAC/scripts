@@ -995,6 +995,19 @@ bars({
       { _imgui.ImGuiStyleVar.FramePadding, Vector2.new(2, 2) },
       { _imgui.ImGuiStyleVar.ItemSpacing,  Vector2.new(2, 2) }
     },
+    shallowcopy = function(orig)
+      local orig_type = type(orig)
+      local copy
+      if orig_type == 'table' then
+          copy = {}
+          for orig_key, orig_value in pairs(orig) do
+              copy[orig_key] = orig_value
+          end
+      else -- number, string, boolean, etc
+          copy = orig
+      end
+      return copy
+    end,
     init = function(bar)
       function table.contains(tbl, value)
         for _, v in pairs(tbl) do
@@ -1083,14 +1096,22 @@ bars({
 
       bar.scan = function(bar)
         bar.slots = {}
-
+        local filledSlots=bar.shallowcopy(bar.equipMask)
         for _, equipment in ipairs(game.Character.Equipment) do
-          for i, slot in pairs(bar.equipMask) do
+          for i, slot in ipairs(bar.equipMask) do
             if slot ~= "None" and equipment.CurrentWieldedLocation + EquipMask[slot] == equipment.CurrentWieldedLocation then
               bar.slots[slot] = equipment
+              filledSlots[i] = "FILLED"
             end
           end
         end
+        for i,slot in ipairs(filledSlots) do
+           if filledSlots[i]~="FILLED" then
+            bar.slots[filledSlots[i]]=filledSlots[i]
+           end
+        end
+        
+
         if bar.activeProfile then
           for slot, gear in pairs(bar.activeProfile.gear) do
             if (bar.slots[slot] == nil or bar.slots[slot].Id ~= gear) then
@@ -1137,6 +1158,7 @@ bars({
       --end
     end,
     showGear = function(bar)
+      bar:scan()
       local style = ImGui.GetStyle()
       local miscPadding = style.CellPadding + style.FramePadding + style.ItemSpacing + style.WindowPadding
       for _, profile in ipairs(bar.profiles) do
@@ -1167,7 +1189,7 @@ bars({
           drawlist.AddRectFilled(start, start + cellSize, 0x88000000)
 
           local slottedItem = bar.slots[slot]
-          if slottedItem then
+          if slottedItem and slottedItem~=slot then
             ImGui.SetCursorScreenPos(start)
             DrawIcon(bar, bar.GetItemTypeUnderlay(slottedItem), cellSize, function()
               if table.contains(bar.rememberedSlots, slottedItem.Id) then
@@ -1183,8 +1205,29 @@ bars({
             elseif bar.rememberedSlots[slot] and slottedItem.Id ~= bar.rememberedSlots[slot] then
               drawlist.AddRectFilled(start, start + cellSize, 0x880000FF)
             end
-          elseif bar.rememberedSlots[slot] then
+          elseif bar.rememberedSlots[slot] and bar.rememberedSlots[slot]~=slot then
             drawlist.AddRectFilled(start, start + cellSize, 0x880000FF)
+          elseif slottedItem==slot then
+            ImGui.SetCursorScreenPos(start)
+            local mouse = ImGui.GetMousePos()
+            local isHovered = mouse.X >= start.X and mouse.X <= start.X + cellSize.X and
+                mouse.Y >= start.Y and mouse.Y <= start.Y + cellSize.Y
+    
+            -- Handle input
+            if isHovered and ImGui.IsMouseClicked(0) then
+              if bar.rememberedSlots[slot] == slot then
+                bar.rememberedSlots[slot] = nil
+              else
+                bar.rememberedSlots[slot] = slot
+              end
+            end
+
+            if bar.rememberedSlots[slot]==slot then 
+              drawlist.AddRectFilled(start, start + cellSize, 0x8800FF00)
+            elseif bar.rememberedSlots[slot]~=nil then
+              drawlist.AddRectFilled(start, start + cellSize, 0x880000FF)
+            end
+            ImGui.InvisibleButton("##"..slot,cellSize)
           end
         end
       end
@@ -1284,28 +1327,36 @@ bars({
           bar.activeProfile = profile
           local count = 1
           for slot, gearId in pairs(profile.gear) do
-            local profileEquipment = game.World.Get(gearId)
-            if profileEquipment ~= nil then
-              local slotMask = EquipMask[slot]
-              local wieldedItem = bar.slots[slot]
-              if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
-                game.Actions.ObjectMove(profileEquipment.Id, game.CharacterId, 0, false, stagger(count),
-                  function(objectMove)
-                    if not objectMove.Success and objectMove.Error ~= ActionError.ItemAlreadyWielded then
-                      print("Fail! " .. objectMove.ErrorDetails)
-                    else
-                      game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
-                        genericActionCallback)
-                    end
-                  end)
-                count = count + 1
+            if gearId~=slot then
+              local profileEquipment = game.World.Get(gearId)
+              if profileEquipment ~= nil then
+                local slotMask = EquipMask[slot]
+                local wieldedItem = bar.slots[slot]
+                if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
+                  game.Actions.ObjectMove(profileEquipment.Id, game.CharacterId, 0, false, stagger(count),
+                    function(objectMove)
+                      if not objectMove.Success and objectMove.Error ~= ActionError.ItemAlreadyWielded then
+                        print("Fail! " .. objectMove.ErrorDetails)
+                      else
+                        game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
+                          genericActionCallback)
+                      end
+                    end)
+                  count = count + 1
+                else
+                  game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
+                    genericActionCallback)
+                  count = count + 1
+                end
               else
-                game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
-                  genericActionCallback)
-                count = count + 1
+                print("Can't find " .. gearId .. " for slot " .. bar.equipMask[slot])
               end
             else
-              print("Can't find " .. gearId .. " for slot " .. bar.equipMask[slot])
+              local wieldedItem = bar.slots[slot]
+              if wieldedItem ~= slot then
+                game.Actions.ObjectMove(wieldedItem.Id, game.CharacterId, 0, false, stagger(count, equipmentActionOpts), genericActionCallback)
+                count = count+1
+              end
             end
           end
           game.Messages.Incoming.Qualities_UpdateInstanceID.Add(bar.watcher)
