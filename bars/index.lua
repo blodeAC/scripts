@@ -3,6 +3,7 @@ ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
+local acclient = require("acclient")
 local bars = require("bars")
 
 ---------------------------------------
@@ -22,20 +23,20 @@ function GetOrCreateTexture(textureId)
   return textures[textureId]
 end
 
-function DrawIcon(bar,overrideId,size,func)
+function DrawIcon(bar, overrideId, size, func)
   --print(overrideId)
-  if not size then 
+  if not size then
     size = ImGui.GetContentRegionAvail()
   end
 
-  local randIdBadIdea=ImGui.GetCursorScreenPos().X*ImGui.GetCursorScreenPos().Y
+  local randIdBadIdea = ImGui.GetCursorScreenPos().X * ImGui.GetCursorScreenPos().Y
   if overrideId then
-    local texture=GetOrCreateTexture(overrideId)
+    local texture = GetOrCreateTexture(overrideId)
     if not texture then return end
-    if ImGui.TextureButton("##"..randIdBadIdea, texture, size) then
+    if ImGui.TextureButton("##" .. randIdBadIdea, texture, size) then
       func()
     end
-  elseif ImGui.TextureButton("##"..randIdBadIdea, GetOrCreateTexture(bar.icon), size) then
+  elseif ImGui.TextureButton("##" .. randIdBadIdea, GetOrCreateTexture(bar.icon), size) then
     bar:func()
   end
   if ImGui.IsItemClicked(1) and bar.rightclick then
@@ -52,7 +53,7 @@ function DrawIcon(bar,overrideId,size,func)
     rectMin.Y + (rectMax.Y - rectMin.Y - textSize.Y) / 2
   )
   if overrideId and bar.label then
-    drawlist.AddRectFilled(rectMin,rectMax,0x88000000)
+    drawlist.AddRectFilled(rectMin, rectMax, 0x88000000)
   end
   -- Draw text in white
   drawlist.AddText(startText, 0xFFFFFFFF, bar.label or "")
@@ -73,16 +74,16 @@ function loadSettings()
       for i, bar in ipairs(bars) do
         if characterSettings[bar.name] then
           for key, value in pairs(characterSettings[bar.name]) do
-            if type(value)=="table" and value.position and value.size then
-              bar[key]={}
-              bar[key].position=Vector2.new(value.position.X,value.position.Y)
-              bar[key].size=Vector2.new(value.size.X,value.size.Y)
-            elseif key=="position" then
-              bar[key]=Vector2.new(value.X,value.Y)
-            elseif key=="size" then
-              bar[key]=Vector2.new(value.X,value.Y)
+            if type(value) == "table" and value.position and value.size then
+              bar[key] = {}
+              bar[key].position = Vector2.new(value.position.X, value.position.Y)
+              bar[key].size = Vector2.new(value.size.X, value.size.Y)
+            elseif key == "position" then
+              bar[key] = Vector2.new(value.X, value.Y)
+            elseif key == "size" then
+              bar[key] = Vector2.new(value.X, value.Y)
             else
-              bar[key]=value
+              bar[key] = value
             end
           end
         end
@@ -120,11 +121,11 @@ local function prettyPrintJSON(value, indent)
 end
 
 -- Save settings to a JSON file with prettification (indentation). Variable arguments passed as SaveBarSettings(bar,key,value,key2,value2,...)
-function SaveBarSettings(barSaving,...)
+function SaveBarSettings(barSaving, ...)
   local args
-  args=table.pack(...)
-  if arg~=nil then
-    if args.n~=0 and args.n%2==1 then
+  args = table.pack(...)
+  if arg ~= nil then
+    if args.n ~= 0 and args.n % 2 == 1 then
       print("Invalid number of arguments to save. Must be even")
       return
     end
@@ -136,7 +137,7 @@ function SaveBarSettings(barSaving,...)
     local content = io.ReadText(settingsFile)
     settings = json.parse(content) or {}
   end
-  
+
   if not settings[game.ServerName] then
     settings[game.ServerName] = {}
   end
@@ -147,12 +148,12 @@ function SaveBarSettings(barSaving,...)
   settings[game.ServerName][game.Character.Weenie.Name] = settings[game.ServerName][game.Character.Weenie.Name]
 
   if args then
-    for i=1,args.n do
-      if i%2==0 then
-        if settings[game.ServerName][game.Character.Weenie.Name][barSaving.name]==nil then
-          settings[game.ServerName][game.Character.Weenie.Name][barSaving.name]={}
+    for i = 1, args.n do
+      if i % 2 == 0 then
+        if settings[game.ServerName][game.Character.Weenie.Name][barSaving.name] == nil then
+          settings[game.ServerName][game.Character.Weenie.Name][barSaving.name] = {}
         end
-        settings[game.ServerName][game.Character.Weenie.Name][barSaving.name][args[i-1]]=args[i]
+        settings[game.ServerName][game.Character.Weenie.Name][barSaving.name][args[i - 1]] = args[i]
       end
     end
   end
@@ -178,7 +179,7 @@ local function imguiAligner(bar, text, start, size)
     textSize.X = textSize.X - ImGui.GetFontSize() / 2
   end
 
-  
+
   -- Calculate the X position to center the text, and ensure it doesn't overflow
   local textX
   if bar.textAlignment == "left" then
@@ -209,17 +210,17 @@ for i, bar in ipairs(bars) do
   else
     huds[i] = views.Huds.CreateHud(bar.name)
   end
-  
-  bar.hud=huds[i]
+
+  bar.hud = huds[i]
   huds[i].OnHide.Add(function()
     bar.hide = true
-    SaveBarSettings(bar,"hide",bar.hide)
+    SaveBarSettings(bar, "hide", bar.hide)
     huds[i].Visible = false
   end)
   huds[i].OnShow.Add(function()
     bar.hide = false
-    SaveBarSettings(bar,"hide",bar.hide)
-    huds[i].Visible = true    
+    SaveBarSettings(bar, "hide", bar.hide)
+    huds[i].Visible = true
   end)
 
   -- Set HUD properties.
@@ -235,14 +236,15 @@ for i, bar in ipairs(bars) do
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FramePadding, zeroVector)
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemSpacing, zeroVector)
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, zeroVector)
-    
+
     if bar.imguiReset then
-      if bar.renderContext==nil then
+      if bar.renderContext == nil then
         ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(100, 100))
         ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * 40))
       else
         ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(100, 100))
-        ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or Vector2.new(100 + (i * 10), (i - 1) * 40))
+        ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or
+        Vector2.new(100 + (i * 10), (i - 1) * 40))
       end
       bar.imguiReset = false
     end
@@ -265,7 +267,7 @@ for i, bar in ipairs(bars) do
 
   if bar.init then
     bar:init()
-    bar.init=nil
+    bar.init = nil
   end
 
   -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
@@ -275,10 +277,10 @@ for i, bar in ipairs(bars) do
       ImGui.SetWindowFontScale(fontScale)
 
       for _, style in ipairs(bar.stylevar or {}) do
-        ImGui.PushStyleVar(style[1], type(style[2])=="function" and style[2](bar) or style[2])
+        ImGui.PushStyleVar(style[1], type(style[2]) == "function" and style[2](bar) or style[2])
       end
-      for _,color in ipairs(bar.styleColor or {}) do
-        ImGui.PushStyleColor(color[1],type(color[2])=="function" and color[2](bar) or color[2])
+      for _, color in ipairs(bar.styleColor or {}) do
+        ImGui.PushStyleColor(color[1], type(color[2]) == "function" and color[2](bar) or color[2])
       end
 
       if bar.type == "progress" then
@@ -297,14 +299,12 @@ for i, bar in ipairs(bars) do
         ImGui.Text(text)
 
         ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
-
       elseif bar.type == "button" then
         if bar.icon then
           DrawIcon(bar)
         elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
           bar:func()
         end
-
       elseif bar.type == "text" then
         ---@diagnostic disable-next-line
         local text = bar:text()
@@ -314,28 +314,31 @@ for i, bar in ipairs(bars) do
         bar.render(bar)
       end
 
-      for _,__ in ipairs(bar.styleColor or {}) do
+      for _, __ in ipairs(bar.styleColor or {}) do
         ImGui.PopStyleColor()
       end
       for _, __ in ipairs(bar.stylevar or {}) do
         ImGui.PopStyleVar()
       end
-      
+
       -- Save position/size when Ctrl is pressed.
       if ImGui.GetIO().KeyCtrl then
-        local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize()/fontScale)
-        local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize()/fontScale)
+        local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize() / fontScale)
+        local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize() / fontScale)
         if currentPos.X ~= (bar.position and bar.position.X or -1) or
             currentPos.Y ~= (bar.position and bar.position.Y or -1) or
             currentContentSize.X ~= (bar.size and bar.size.X or -1) or
             currentContentSize.Y ~= (bar.size and bar.size.Y or -1) then
           bar.position = currentPos
           bar.size = currentContentSize
-          if bar.renderContext~=nil then
-            bar[bar.renderContext]={position=Vector2.new(bar.position.X,bar.position.Y),size=Vector2.new(bar.size.X,bar.size.Y)}
-            SaveBarSettings(bar,bar.renderContext,{position={X=bar.position.X,Y=bar.position.Y},size={X=bar.size.X,Y=bar.size.Y}})
-          else 
-            SaveBarSettings(bar, "position",{X=bar.position.X,Y=bar.position.Y},"size", {X=bar.size.X,Y=bar.size.Y})
+          if bar.renderContext ~= nil then
+            bar[bar.renderContext] = { position = Vector2.new(bar.position.X, bar.position.Y), size = Vector2.new(
+            bar.size.X, bar.size.Y) }
+            SaveBarSettings(bar, bar.renderContext,
+              { position = { X = bar.position.X, Y = bar.position.Y }, size = { X = bar.size.X, Y = bar.size.Y } })
+          else
+            SaveBarSettings(bar, "position", { X = bar.position.X, Y = bar.position.Y }, "size",
+              { X = bar.size.X, Y = bar.size.Y })
           end
         end
       end
@@ -345,4 +348,3 @@ for i, bar in ipairs(bars) do
     ImGui.PopStyleVar(5) --WindowMinSize,WindowPadding,FramePadding,ItemSpacing,ItemInnerSpacing
   end)
 end
-

@@ -2,7 +2,6 @@
 config = require("config")
 local acclient = require("acclient")
 
-
 local init = function()
   local settingsFile = "target_settings.json"
   local io = require("filesystem").GetScript()
@@ -187,7 +186,8 @@ local init = function()
   local filter = {
     properties = {
       ObjectClass = {
-        ObjectClass.Monster
+        ObjectClass.Monster,
+        ObjectClass.Player
       }
     },
     tests = {
@@ -283,7 +283,6 @@ local init = function()
     if (wobjects_hp[wobjectId] ~= nil and healthPlayScripts[e.Data.ScriptId] ~= nil) then
       ---@diagnostic disable-next-line: undefined-field
       acclient.Client.RequestHealthUpdate(wobjectId)
-      --wobjects[wobjectId].expected=true
     end
   end)
 
@@ -493,6 +492,21 @@ end
 if game.State == ClientState.In_Game then
   init()
 end
+game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
+  local wobjectId=e.Data.ObjectId
+  local creatureProfile=e.Data.CreatureProfile
+  if wobjects_hp[wobjectId] and creatureProfile and creatureProfile.Health and creatureProfile.HealthMax then
+    wobjects_hp[wobjectId].hp=creatureProfile.Health / creatureProfile.HealthMax
+  end
+end)
+
+game.OnTick.Add(function()
+  for _, wobject in pairs(wobjects_hp or {}) do
+    if wobject.objectClass==ObjectClass.Player and wobject.hp~=1 then
+      game.Actions.ObjectAppraise(wobject.id)
+    end
+  end
+end)
 
 game.OnStateChanged.Add(function(state)
   if state.NewState == ClientState.In_Game then
