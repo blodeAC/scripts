@@ -1324,6 +1324,7 @@ bars({
       for _, profile in ipairs(bar.profiles) do
         local screenPos = ImGui.GetCursorScreenPos()
         if ImGui.Button(profile.name .. "##profile" .. tostring(_), Vector2.new(windowSize.X, ImGui.GetTextLineHeight()) + miscPadding) then
+          bar:scan()
           bar.activeProfile = profile
           local count = 1
           for slot, gearId in pairs(profile.gear) do
