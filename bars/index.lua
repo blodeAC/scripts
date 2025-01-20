@@ -24,7 +24,6 @@ function GetOrCreateTexture(textureId)
 end
 
 function DrawIcon(bar, overrideId, size, func)
-  --print(overrideId)
   if not size then
     size = ImGui.GetContentRegionAvail()
   end
@@ -32,11 +31,11 @@ function DrawIcon(bar, overrideId, size, func)
   local randIdBadIdea = ImGui.GetCursorScreenPos().X * ImGui.GetCursorScreenPos().Y
   if overrideId then
     local texture = GetOrCreateTexture(overrideId)
-    if not texture then return end
+    if not texture then return false end
     if ImGui.TextureButton("##" .. randIdBadIdea, texture, size) then
       func()
     end
-  elseif ImGui.TextureButton("##" .. randIdBadIdea, GetOrCreateTexture(bar.icon), size) then
+  elseif ImGui.TextureButton("##" .. randIdBadIdea, GetOrCreateTexture(bar.settings.icon_hex), size) then
     bar:func()
   end
   if ImGui.IsItemClicked(1) and bar.rightclick then
@@ -47,16 +46,16 @@ function DrawIcon(bar, overrideId, size, func)
   local rectMin = ImGui.GetItemRectMin()
   local rectMax = ImGui.GetItemRectMax()
 
-  local textSize = ImGui.CalcTextSize(bar.label or " ")
+  local textSize = ImGui.CalcTextSize(bar.settings.label_str or " ")
   local startText = Vector2.new(
     rectMin.X + (rectMax.X - rectMin.X - textSize.X) / 2,
     rectMin.Y + (rectMax.Y - rectMin.Y - textSize.Y) / 2
   )
-  if overrideId and bar.label then
+  if overrideId and bar.settings.label_str then
     drawlist.AddRectFilled(rectMin, rectMax, 0x88000000)
   end
   -- Draw text in white
-  drawlist.AddText(startText, 0xFFFFFFFF, bar.label or "")
+  drawlist.AddText(startText, 0xFFFFFFFF, bar.settings.label_str or "")
 end
 
 ----------------------------------------
@@ -82,6 +81,10 @@ function loadSettings()
               bar[key] = Vector2.new(value.X, value.Y)
             elseif key == "size" then
               bar[key] = Vector2.new(value.X, value.Y)
+            elseif key == "settings" then
+              for nestedKey, nestedVal in pairs(value) do
+                bar.settings[nestedKey] = nestedVal
+              end
             else
               bar[key] = value
             end
@@ -120,49 +123,188 @@ local function prettyPrintJSON(value, indent)
   end
 end
 
--- Save settings to a JSON file with prettification (indentation). Variable arguments passed as SaveBarSettings(bar,key,value,key2,value2,...)
 function SaveBarSettings(barSaving, ...)
-  local args
-  args = table.pack(...)
-  if arg ~= nil then
-    if args.n ~= 0 and args.n % 2 == 1 then
-      print("Invalid number of arguments to save. Must be even")
-      return
-    end
+  local args = table.pack(...)
+  if args.n % 2 ~= 0 then
+    print("Invalid number of arguments to save. Must be even")
+    return
   end
 
+  -- Read existing settings
   local settings = {}
-  local files = io.FileExists(settingsFile)
-  if files then
+  if io.FileExists(settingsFile) then
     local content = io.ReadText(settingsFile)
     settings = json.parse(content) or {}
   end
 
-  if not settings[game.ServerName] then
-    settings[game.ServerName] = {}
-  end
-  if not settings[game.ServerName][game.Character.Weenie.Name] then
-    settings[game.ServerName][game.Character.Weenie.Name] = {}
-  end
+  -- Ensure server and character structure exists
+  local server = game.ServerName
+  local character = game.Character.Weenie.Name
 
-  settings[game.ServerName][game.Character.Weenie.Name] = settings[game.ServerName][game.Character.Weenie.Name]
+  settings[server] = settings[server] or {}
+  settings[server][character] = settings[server][character] or {}
+  local charSettings = settings[server][character]
 
-  if args then
-    for i = 1, args.n do
-      if i % 2 == 0 then
-        if settings[game.ServerName][game.Character.Weenie.Name][barSaving.name] == nil then
-          settings[game.ServerName][game.Character.Weenie.Name][barSaving.name] = {}
-        end
-        settings[game.ServerName][game.Character.Weenie.Name][barSaving.name][args[i - 1]] = args[i]
-      end
+  -- Process arguments
+  for i = 1, args.n, 2 do
+    local keyPath = args[i]
+    local value = args[i + 1]
+
+    if type(keyPath) ~= "string" then
+      print("Key must be a string")
+      return
     end
+
+    -- Split dot-separated keys
+    local parts = {}
+    for part in string.gmatch(keyPath, "[^.]+") do
+      table.insert(parts, part)
+    end
+
+    -- Traverse and update the nested structure
+    local current = charSettings[barSaving.name] or {}
+    charSettings[barSaving.name] = current
+
+    for j = 1, #parts - 1 do
+      local key = parts[j]
+      current[key] = current[key] or {}
+      current = current[key]
+    end
+
+    -- Set the final key
+    current[parts[#parts]] = value
   end
 
+  -- Save back to the file
   io.WriteText(settingsFile, prettyPrintJSON(settings))
 end
 
--- Load settings when the script starts.
 loadSettings()
+
+----------------------------------------
+--- CREATE SETTINGS HUD
+----------------------------------------
+
+---@type Hud[]
+local huds = {}
+local hudCreate -- defined later
+
+local function ColorConvertVector3ToU32(colorVector)
+  -- Clamp values to [0, 1] range
+  local r = math.max(0, math.min(1, colorVector.x))
+  local g = math.max(0, math.min(1, colorVector.y))
+  local b = math.max(0, math.min(1, colorVector.z))
+
+  -- Convert to 0-255 range and round to nearest integer
+  local r_int = math.floor(r * 255 + 0.5)
+  local g_int = math.floor(g * 255 + 0.5)
+  local b_int = math.floor(b * 255 + 0.5)
+
+  -- Combine into a single U32 value (assuming ABGR format)
+  return 0xFF000000 + (b_int * 65536) + (g_int * 256) + r_int
+end
+
+local settingsHud = views.Huds.CreateHud("Bar Settings")
+local function renderBars(bar)
+  if ImGui.CollapsingHeader(bar.name) then
+    for settingName, setting in pairs(bar.settings) do
+      ImGui.Text(settingName)
+      ImGui.SameLine()
+      local settingType = settingName:match(".*_(.*)$")
+
+      if settingType == nil then
+        local checked = setting
+        local changed = ImGui.Checkbox("##" .. settingName, checked)
+        if changed then
+          checked = not checked
+          bar.settings[settingName] = checked
+          if settingName == "enabled" then
+            if checked then
+              hudCreate(bar, #huds)
+            else
+              bar.hud.Dispose()
+              bar.hud = nil
+            end
+          end
+          SaveBarSettings(bar, "settings." .. settingName, checked)
+        end
+      elseif settingType == "col4" then
+        local color = ImGui.ColorConvertU32ToFloat4(setting)
+        local changed, changedColor = ImGui.ColorEdit4("##" .. bar.name .. "," .. settingName, color)
+        if changed then
+          ---@diagnostic disable-next-line
+          local newColor = ImGui.ColorConvertFloat4ToU32(changedColor)
+          bar.settings[settingName] = newColor
+          SaveBarSettings(bar, "settings." .. settingName, newColor)
+        end
+      elseif settingType == "col3" then
+        local color = ImGui.ColorConvertU32ToFloat4(setting)
+        local color3 = Vector3.new(color.X, color.Y, color.Z)
+        local changed, changedColor = ImGui.ColorEdit3("##" .. bar.name .. "," .. settingName, color3)
+        if changed then
+          ---@diagnostic disable-next-line
+          local newColor = ColorConvertVector3ToU32(changedColor)
+          bar.settings[settingName] = newColor
+          SaveBarSettings(bar, "settings." .. settingName, newColor)
+        end
+      elseif settingType == "num" then
+        local value = setting
+        local changed, changedValue = ImGui.InputInt("##" .. bar.name .. "," .. settingName, value, 1, 100)
+        if changed then
+          bar.settings[settingName] = changedValue
+          SaveBarSettings(bar, "settings." .. settingName, changedValue)
+        end
+      elseif settingType == "str" then
+        local value = setting
+        local valueBuffer = value
+        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "," .. settingName, valueBuffer, 256)
+        if changed then
+          if changedValue ~= "" then
+            bar.settings[settingName] = changedValue
+            SaveBarSettings(bar, "settings." .. settingName, changedValue)
+          end
+        end
+      elseif settingType == "hex" then
+        local value = string.format("0x%X", setting)
+        local valueBuffer = value
+        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "," .. settingName, valueBuffer, 256)
+        if changed then
+          if changedValue ~= "" then
+            bar.settings[settingName] = tonumber(changedValue)
+            SaveBarSettings(bar, "settings." .. settingName, tonumber(changedValue))
+          end
+        end
+      elseif settingType == "combo" then
+        ---@diagnostic disable-next-line
+        local listItems = { unpack(setting, 2, #setting) }
+        local changed, newIndex = ImGui.Combo("##" .. bar.name .. "," .. settingName, setting[1] - 1, listItems,
+          #listItems)                                                                                                   -- -1 for imgui
+        if changed then
+          bar.settings[settingName][1] = newIndex + 1                                                                   -- +1 for lua
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
+        end
+      else
+        ImGui.Text(tostring(setting))
+      end
+    end
+  end
+end
+settingsHud.OnRender.Add(function()
+  ImGui.Text("Active Bars")
+  for i, bar in ipairs(bars) do
+    if bar.hud then
+      renderBars(bar)
+    end
+  end
+  ImGui.NewLine()
+  ImGui.Text("Inactive Bars")
+  for i, bar in ipairs(bars) do
+    if bar.hud == nil then
+      renderBars(bar)
+    end
+  end
+end)
+
 
 ----------------------------------------
 --- ImGui Display Logic: Separate HUDs for Each Progress Bar
@@ -170,8 +312,10 @@ loadSettings()
 
 local function imguiAligner(bar, text, start, size)
   -- Default to current cursor position and content region if not provided
-  start = start or ImGui.GetCursorScreenPos() or Vector2.new(0, 0) -- Ensure it's not nil
+  start = start or ImGui.GetCursorScreenPos() or Vector2.new(0, 0)                                                                               -- Ensure it's not nil
   size = size or ImGui.GetContentRegionAvail()
+  local textAlignment = bar.settings.textAlignment_combo and
+  bar.settings.textAlignment_combo[bar.settings.textAlignment_combo[1] + 1] or "center"                                                          --+1 for self
 
   -- Calculate the size of the text to align
   local textSize = ImGui.CalcTextSize(text)
@@ -179,17 +323,16 @@ local function imguiAligner(bar, text, start, size)
     textSize.X = textSize.X - ImGui.GetFontSize() / 2
   end
 
-
   -- Calculate the X position to center the text, and ensure it doesn't overflow
   local textX
-  if bar.textAlignment == "left" then
+  if textAlignment == "left" then
     textX = start.X -- Align text to the left
-  elseif bar.textAlignment == "center" or bar.textAlignment == nil then
+  elseif textAlignment == "center" or textAlignment == nil then
     -- Center the text horizontally, considering the available space
     textX = start.X + (size.X - textSize.X) / 2
     -- Ensure textX doesn't go below the start.X
     textX = math.max(textX, start.X)
-  elseif bar.textAlignment == "right" then
+  elseif textAlignment == "right" then
     textX = start.X + size.X - textSize.X -- Align text to the right
   end
 
@@ -200,31 +343,28 @@ local function imguiAligner(bar, text, start, size)
   ImGui.SetCursorScreenPos(Vector2.new(textX, textY))
 end
 
----@type Hud[]
-local huds = {} -- Initialize the huds table
 
--- Create HUDs for each bar as invisible windows
-for i, bar in ipairs(bars) do
-  if bar.icon then
-    huds[i] = views.Huds.CreateHud(bar.name, bar.icon)
+hudCreate = function(bar, i)
+  if bar.settings and bar.settings.icon_hex then
+    huds[i] = views.Huds.CreateHud(bar.name, bar.settings.icon_hex)
   else
     huds[i] = views.Huds.CreateHud(bar.name)
   end
 
   bar.hud = huds[i]
   huds[i].OnHide.Add(function()
-    bar.hide = true
-    SaveBarSettings(bar, "hide", bar.hide)
-    huds[i].Visible = false
+    bar.settings.enabled = false
+    SaveBarSettings(bar, "settings.enabled", bar.settings.enabled)
+    huds[i].Dispose()
   end)
   huds[i].OnShow.Add(function()
-    bar.hide = false
-    SaveBarSettings(bar, "hide", bar.hide)
+    bar.settings.enabled = true
+    SaveBarSettings(bar, "settings.enabled", bar.settings.enabled)
     huds[i].Visible = true
   end)
 
   -- Set HUD properties.
-  huds[i].Visible = not bar.hide
+  huds[i].Visible = true
   huds[i].ShowInBar = true
 
   bar.imguiReset = true
@@ -244,7 +384,7 @@ for i, bar in ipairs(bars) do
       else
         ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(100, 100))
         ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or
-        Vector2.new(100 + (i * 10), (i - 1) * 40))
+          Vector2.new(100 + (i * 10), (i - 1) * 40))
       end
       bar.imguiReset = false
     end
@@ -265,18 +405,18 @@ for i, bar in ipairs(bars) do
     end
   end)
 
-  if bar.init then
-    bar:init()
-    bar.init = nil
-  end
-
   -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
   huds[i].OnRender.Add(function()
+    if bar.init then
+      bar:init()
+      bar.init = nil
+    end
+
     if ImGui.BeginChild(bar.name .. "##" .. i, Vector2.new(0, 0), false, huds[i].WindowSettings) then
-      local fontScale = bar.fontScale or 1
+      local fontScale = bar.settings.fontScale_num or 1
       ImGui.SetWindowFontScale(fontScale)
 
-      for _, style in ipairs(bar.stylevar or {}) do
+      for _, style in ipairs(bar.styleVar or {}) do
         ImGui.PushStyleVar(style[1], type(style[2]) == "function" and style[2](bar) or style[2])
       end
       for _, color in ipairs(bar.styleColor or {}) do
@@ -284,7 +424,7 @@ for i, bar in ipairs(bars) do
       end
 
       if bar.type == "progress" then
-        ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, bar.color)
+        ImGui.PushStyleColor(_imgui.ImGuiCol.PlotHistogram, bar.settings.color_col4 or 0xFFFFFFFF)
 
         -- Render the progress bar inside the HUD without default text.
         local progressBarSize = Vector2.new(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y)
@@ -300,9 +440,9 @@ for i, bar in ipairs(bars) do
 
         ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
       elseif bar.type == "button" then
-        if bar.icon then
+        if bar.settings.icon_hex then
           DrawIcon(bar)
-        elseif ImGui.Button(bar.text and bar:text() or bar.label, ImGui.GetContentRegionAvail()) then
+        elseif ImGui.Button(bar.text and bar:text() or bar.settings.label_str or ("##" .. bar.name), ImGui.GetContentRegionAvail()) then
           bar:func()
         end
       elseif bar.type == "text" then
@@ -317,7 +457,7 @@ for i, bar in ipairs(bars) do
       for _, __ in ipairs(bar.styleColor or {}) do
         ImGui.PopStyleColor()
       end
-      for _, __ in ipairs(bar.stylevar or {}) do
+      for _, __ in ipairs(bar.styleVar or {}) do
         ImGui.PopStyleVar()
       end
 
@@ -332,8 +472,11 @@ for i, bar in ipairs(bars) do
           bar.position = currentPos
           bar.size = currentContentSize
           if bar.renderContext ~= nil then
-            bar[bar.renderContext] = { position = Vector2.new(bar.position.X, bar.position.Y), size = Vector2.new(
-            bar.size.X, bar.size.Y) }
+            bar[bar.renderContext] = {
+              position = Vector2.new(bar.position.X, bar.position.Y),
+              size = Vector2.new(
+                bar.size.X, bar.size.Y)
+            }
             SaveBarSettings(bar, bar.renderContext,
               { position = { X = bar.position.X, Y = bar.position.Y }, size = { X = bar.size.X, Y = bar.size.Y } })
           else
@@ -347,4 +490,11 @@ for i, bar in ipairs(bars) do
     ImGui.EndChild()
     ImGui.PopStyleVar(5) --WindowMinSize,WindowPadding,FramePadding,ItemSpacing,ItemInnerSpacing
   end)
+end
+
+-- Create HUDs for each bar as invisible windows
+for i, bar in ipairs(bars) do
+  if bar.settings and bar.settings.enabled then
+    hudCreate(bar, i)
+  end
 end
