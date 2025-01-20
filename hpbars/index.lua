@@ -116,8 +116,12 @@ local init = function()
       self[wobject.id] = wobject
 
       -- Request a health update for the newly inserted wobject
-      ---@diagnostic disable-next-line: undefined-field
-      acclient.Client.RequestHealthUpdate(wobject.id)
+      if wobject.objectClass==ObjectClass.Monster then
+        ---@diagnostic disable-next-line: undefined-field
+        acclient.Client.RequestHealthUpdate(wobject.id)
+      else
+        game.Actions.ObjectAppraise(wobject.id)
+      end
     end
   }, {
     -- Custom iterator for pairs to return only table entries
@@ -278,20 +282,31 @@ local init = function()
   -- Event listener for script play events related to health
   game.Messages.Incoming.Effects_PlayScriptType.Add(function(e)
     local wobjectId = e.Data.ObjectId
+    local wobject = wobjects_hp[wobjectId]
 
     -- Request health update if the wobject exists and the script is health-related. Don't send if targeted bc those are free
-    if (wobjects_hp[wobjectId] ~= nil and healthPlayScripts[e.Data.ScriptId] ~= nil) then
-      ---@diagnostic disable-next-line: undefined-field
-      acclient.Client.RequestHealthUpdate(wobjectId)
+    if (wobject ~= nil and healthPlayScripts[e.Data.ScriptId] ~= nil) then
+      if wobject.objectClass==ObjectClass.Monster then
+        ---@diagnostic disable-next-line: undefined-field
+        acclient.Client.RequestHealthUpdate(wobject.id)
+      else
+        game.Actions.ObjectAppraise(wobject.id)
+      end
     end
   end)
 
   game.Messages.Incoming.Effects_SoundEvent.Add(function(e)
     local wobjectId = e.Data.ObjectId
+    local wobject = wobjects_hp[wobjectId]
     
     if (wobjects_hp[wobjectId] ~= nil and e.Data.SoundType == Sound.HitFlesh1) then
       ---@diagnostic disable-next-line: undefined-field
-      acclient.Client.RequestHealthUpdate(wobjectId)
+      if wobject.objectClass==ObjectClass.Monster then
+        ---@diagnostic disable-next-line: undefined-field
+        acclient.Client.RequestHealthUpdate(wobject.id)
+      else
+        game.Actions.ObjectAppraise(wobject.id)
+      end
     end
   end)
 
@@ -407,6 +422,24 @@ local init = function()
   -- Add listener for when the character's position changes
   game.Character.Weenie.OnPositionChanged.Add(positionChanged)
 
+  game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
+    local wobjectId=e.Data.ObjectId
+    local creatureProfile=e.Data.CreatureProfile
+    if wobjects_hp[wobjectId] and creatureProfile and creatureProfile.Health and creatureProfile.HealthMax then
+      wobjects_hp[wobjectId].hp=creatureProfile.Health / creatureProfile.HealthMax
+    end
+  end)
+  
+  game.OnTick.Add(function()
+    ---@diagnostic disable: undefined-field
+    for _, wobject in pairs(wobjects_hp or {}) do
+      
+      if wobject.objectClass==ObjectClass.Player and wobject.hp~=1 then
+        game.Actions.ObjectAppraise(wobject.id)
+      end
+      ---@diagnostic enable: undefined-field
+    end
+  end)
 ----------------------------------------
 --- Settings Saving/Loading
   ----------------------------------------
@@ -492,22 +525,6 @@ end
 if game.State == ClientState.In_Game then
   init()
 end
-game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
-  local wobjectId=e.Data.ObjectId
-  local creatureProfile=e.Data.CreatureProfile
-  if wobjects_hp[wobjectId] and creatureProfile and creatureProfile.Health and creatureProfile.HealthMax then
-    wobjects_hp[wobjectId].hp=creatureProfile.Health / creatureProfile.HealthMax
-  end
-end)
-
-game.OnTick.Add(function()
-  for _, wobject in pairs(wobjects_hp or {}) do
-    if wobject.objectClass==ObjectClass.Player and wobject.hp~=1 then
-      game.Actions.ObjectAppraise(wobject.id)
-    end
-  end
-end)
-
 game.OnStateChanged.Add(function(state)
   if state.NewState == ClientState.In_Game then
     init()

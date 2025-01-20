@@ -3,7 +3,6 @@ ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
-local acclient = require("acclient")
 local bars = require("bars")
 
 ---------------------------------------
@@ -28,14 +27,14 @@ function DrawIcon(bar, overrideId, size, func)
     size = ImGui.GetContentRegionAvail()
   end
 
-  local randIdBadIdea = ImGui.GetCursorScreenPos().X * ImGui.GetCursorScreenPos().Y
+  local bar_position = ImGui.GetCursorScreenPos().X .."-".. ImGui.GetCursorScreenPos().Y
   if overrideId then
     local texture = GetOrCreateTexture(overrideId)
     if not texture then return false end
-    if ImGui.TextureButton("##" .. randIdBadIdea, texture, size) then
+    if ImGui.TextureButton("##" .. bar_position .. overrideId, texture, size) then
       func()
     end
-  elseif ImGui.TextureButton("##" .. randIdBadIdea, GetOrCreateTexture(bar.settings.icon_hex), size) then
+  elseif ImGui.TextureButton("##" .. bar_position, GetOrCreateTexture(bar.settings.icon_hex), size) then
     bar:func()
   end
   if ImGui.IsItemClicked(1) and bar.rightclick then
@@ -63,7 +62,7 @@ end
 ----------------------------------------
 
 -- Load settings from a JSON file
-function loadSettings()
+local function loadSettings()
   local files = io.FileExists(settingsFile)
   if files then
     local content = io.ReadText(settingsFile)
@@ -98,7 +97,7 @@ end
 -- Function to pretty-print JSON (never omitted again!)
 local function prettyPrintJSON(value, indent)
   local function wrapString(value)
-    return '"' .. value:gsub('"', '\\"') .. '"'
+    return '"' .. value:gsub('([\\"])', '\\%1'):gsub('\n', '\\n'):gsub('\r', '\\r') .. '"'
   end
 
   indent = indent or ""
@@ -416,7 +415,7 @@ local function renderBars(bar)
               bar.hud = nil
             end
           end
-          SaveBarSettings(bar, "settings." .. settingName, checked)
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       elseif settingType == "col4" then
         local color = ImGui.ColorConvertU32ToFloat4(setting)
@@ -425,7 +424,7 @@ local function renderBars(bar)
           ---@diagnostic disable-next-line
           local newColor = ImGui.ColorConvertFloat4ToU32(changedColor)
           bar.settings[settingName] = newColor
-          SaveBarSettings(bar, "settings." .. settingName, newColor)
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       elseif settingType == "col3" then
         local color = ImGui.ColorConvertU32ToFloat4(setting)
@@ -435,34 +434,30 @@ local function renderBars(bar)
           ---@diagnostic disable-next-line
           local newColor = ColorConvertVector3ToU32(changedColor)
           bar.settings[settingName] = newColor
-          SaveBarSettings(bar, "settings." .. settingName, newColor)
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       elseif settingType == "num" then
         local value = setting
         local changed, changedValue = ImGui.InputInt("##" .. bar.name .. "_" .. settingName, value, 1, 100)
         if changed then
           bar.settings[settingName] = changedValue
-          SaveBarSettings(bar, "settings." .. settingName, changedValue)
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       elseif settingType == "str" then
         local value = setting
         local valueBuffer = value
-        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "_" .. settingName, valueBuffer, 256)
+        local changed, changedValue = ImGui.InputTextMultiline("##" .. bar.name .. "_" .. settingName, valueBuffer, 256,Vector2.new(-1,(select(2, string.gsub(valueBuffer, "\n", "\n"))+1)*ImGui.GetTextLineHeightWithSpacing()+ImGui.GetStyle().FramePadding.Y))
         if changed then
-          if changedValue ~= "" then
-            bar.settings[settingName] = changedValue
-            SaveBarSettings(bar, "settings." .. settingName, changedValue)
-          end
+          bar.settings[settingName] = changedValue
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       elseif settingType == "hex" then
         local value = string.format("0x%X", setting)
         local valueBuffer = value
         local changed, changedValue = ImGui.InputText("##" .. bar.name .. "_" .. settingName, valueBuffer, 256)
         if changed then
-          if changedValue ~= "" then
-            bar.settings[settingName] = tonumber(changedValue)
-            SaveBarSettings(bar, "settings." .. settingName, tonumber(changedValue))
-          end
+          bar.settings[settingName] = tonumber(changedValue)
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       elseif settingType == "combo" then
         ---@diagnostic disable-next-line
@@ -471,6 +466,16 @@ local function renderBars(bar)
           #listItems)                                                                                                   -- -1 for imgui
         if changed then
           bar.settings[settingName][1] = newIndex + 1                                                                   -- +1 for lua
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
+        end
+      elseif settingType=="pct" then
+        local value = setting[1]
+        local valueBuffer = value
+        local min = setting[2]
+        local max = setting[3]
+        local changed, changedValue = ImGui.SliderFloat("##" .. bar.name .. "_" .. settingName,valueBuffer,min,max,"%.2f")
+        if changed then
+          bar.settings[settingName] = {math.floor(changedValue+0.5), min, max}
           SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       else
