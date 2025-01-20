@@ -1431,6 +1431,7 @@ bars({
           bar.profileName = profile.name
           bar.imguiReset = true
           bar.renderContext = "showGearCtx"
+          bar:scan()
           bar.render = bar.showGear
         end
         if bar.activeProfile == profile then
