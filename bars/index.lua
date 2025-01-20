@@ -218,6 +218,8 @@ local function imguiAligner(bar, text, start, size)
   ImGui.SetCursorScreenPos(Vector2.new(textX, textY))
 end
 
+local settingsHud = views.Huds.CreateHud("Bar Settings")
+
 ---@type Hud[]
 local huds = {}
 
@@ -388,7 +390,6 @@ local function ColorConvertVector3ToU32(colorVector)
   return 0xFF000000 + (b_int * 65536) + (g_int * 256) + r_int
 end
 
-local settingsHud = views.Huds.CreateHud("Bar Settings")
 local function renderBars(bar)
   if ImGui.CollapsingHeader(bar.name) then
     for settingName, setting in pairs(bar.settings) do
