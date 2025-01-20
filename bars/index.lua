@@ -182,131 +182,6 @@ end
 loadSettings()
 
 ----------------------------------------
---- CREATE SETTINGS HUD
-----------------------------------------
-
----@type Hud[]
-local huds = {}
-local hudCreate -- defined later
-
-local function ColorConvertVector3ToU32(colorVector)
-  -- Clamp values to [0, 1] range
-  local r = math.max(0, math.min(1, colorVector.x))
-  local g = math.max(0, math.min(1, colorVector.y))
-  local b = math.max(0, math.min(1, colorVector.z))
-
-  -- Convert to 0-255 range and round to nearest integer
-  local r_int = math.floor(r * 255 + 0.5)
-  local g_int = math.floor(g * 255 + 0.5)
-  local b_int = math.floor(b * 255 + 0.5)
-
-  -- Combine into a single U32 value (assuming ABGR format)
-  return 0xFF000000 + (b_int * 65536) + (g_int * 256) + r_int
-end
-
-local settingsHud = views.Huds.CreateHud("Bar Settings")
-local function renderBars(bar)
-  if ImGui.CollapsingHeader(bar.name) then
-    for settingName, setting in pairs(bar.settings) do
-      ImGui.Text(settingName)
-      ImGui.SameLine()
-      local settingType = settingName:match(".*_(.*)$")
-
-      if settingType == nil then
-        local checked = setting
-        local changed = ImGui.Checkbox("##" .. settingName, checked)
-        if changed then
-          checked = not checked
-          bar.settings[settingName] = checked
-          if settingName == "enabled" then
-            if checked then
-              hudCreate(bar, #huds)
-            else
-              bar.hud.Dispose()
-              bar.hud = nil
-            end
-          end
-          SaveBarSettings(bar, "settings." .. settingName, checked)
-        end
-      elseif settingType == "col4" then
-        local color = ImGui.ColorConvertU32ToFloat4(setting)
-        local changed, changedColor = ImGui.ColorEdit4("##" .. bar.name .. "," .. settingName, color)
-        if changed then
-          ---@diagnostic disable-next-line
-          local newColor = ImGui.ColorConvertFloat4ToU32(changedColor)
-          bar.settings[settingName] = newColor
-          SaveBarSettings(bar, "settings." .. settingName, newColor)
-        end
-      elseif settingType == "col3" then
-        local color = ImGui.ColorConvertU32ToFloat4(setting)
-        local color3 = Vector3.new(color.X, color.Y, color.Z)
-        local changed, changedColor = ImGui.ColorEdit3("##" .. bar.name .. "," .. settingName, color3)
-        if changed then
-          ---@diagnostic disable-next-line
-          local newColor = ColorConvertVector3ToU32(changedColor)
-          bar.settings[settingName] = newColor
-          SaveBarSettings(bar, "settings." .. settingName, newColor)
-        end
-      elseif settingType == "num" then
-        local value = setting
-        local changed, changedValue = ImGui.InputInt("##" .. bar.name .. "," .. settingName, value, 1, 100)
-        if changed then
-          bar.settings[settingName] = changedValue
-          SaveBarSettings(bar, "settings." .. settingName, changedValue)
-        end
-      elseif settingType == "str" then
-        local value = setting
-        local valueBuffer = value
-        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "," .. settingName, valueBuffer, 256)
-        if changed then
-          if changedValue ~= "" then
-            bar.settings[settingName] = changedValue
-            SaveBarSettings(bar, "settings." .. settingName, changedValue)
-          end
-        end
-      elseif settingType == "hex" then
-        local value = string.format("0x%X", setting)
-        local valueBuffer = value
-        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "," .. settingName, valueBuffer, 256)
-        if changed then
-          if changedValue ~= "" then
-            bar.settings[settingName] = tonumber(changedValue)
-            SaveBarSettings(bar, "settings." .. settingName, tonumber(changedValue))
-          end
-        end
-      elseif settingType == "combo" then
-        ---@diagnostic disable-next-line
-        local listItems = { unpack(setting, 2, #setting) }
-        local changed, newIndex = ImGui.Combo("##" .. bar.name .. "," .. settingName, setting[1] - 1, listItems,
-          #listItems)                                                                                                   -- -1 for imgui
-        if changed then
-          bar.settings[settingName][1] = newIndex + 1                                                                   -- +1 for lua
-          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
-        end
-      else
-        ImGui.Text(tostring(setting))
-      end
-    end
-  end
-end
-settingsHud.OnRender.Add(function()
-  ImGui.Text("Active Bars")
-  for i, bar in ipairs(bars) do
-    if bar.hud then
-      renderBars(bar)
-    end
-  end
-  ImGui.NewLine()
-  ImGui.Text("Inactive Bars")
-  for i, bar in ipairs(bars) do
-    if bar.hud == nil then
-      renderBars(bar)
-    end
-  end
-end)
-
-
-----------------------------------------
 --- ImGui Display Logic: Separate HUDs for Each Progress Bar
 ----------------------------------------
 
@@ -343,33 +218,26 @@ local function imguiAligner(bar, text, start, size)
   ImGui.SetCursorScreenPos(Vector2.new(textX, textY))
 end
 
+---@type Hud[]
+local huds = {}
 
-hudCreate = function(bar, i)
+local hudCreate = function(bar)
+  local name = bar.name
   if bar.settings and bar.settings.icon_hex then
-    huds[i] = views.Huds.CreateHud(bar.name, bar.settings.icon_hex)
+    huds[name] = views.Huds.CreateHud(bar.name, bar.settings.icon_hex)
   else
-    huds[i] = views.Huds.CreateHud(bar.name)
+    huds[name] = views.Huds.CreateHud(bar.name)
   end
 
-  bar.hud = huds[i]
-  huds[i].OnHide.Add(function()
-    bar.settings.enabled = false
-    SaveBarSettings(bar, "settings.enabled", bar.settings.enabled)
-    huds[i].Dispose()
-  end)
-  huds[i].OnShow.Add(function()
-    bar.settings.enabled = true
-    SaveBarSettings(bar, "settings.enabled", bar.settings.enabled)
-    huds[i].Visible = true
-  end)
+  bar.hud = huds[name]
 
   -- Set HUD properties.
-  huds[i].Visible = true
-  huds[i].ShowInBar = true
+  huds[name].Visible = true
+  huds[name].ShowInBar = true
 
   bar.imguiReset = true
   -- Pre-render setup for each HUD.
-  huds[i].OnPreRender.Add(function()
+  huds[name].OnPreRender.Add(function()
     local zeroVector = Vector2.new(0, 0)
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.WindowMinSize, Vector2.new(1, ImGui.GetFontSize()))
     ImGui.PushStyleVar(_imgui.ImGuiStyleVar.WindowPadding, zeroVector)
@@ -380,22 +248,22 @@ hudCreate = function(bar, i)
     if bar.imguiReset then
       if bar.renderContext == nil then
         ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(100, 100))
-        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * 40))
+        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (name * 10), (name - 1) * 40))
       else
         ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(100, 100))
         ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or
-          Vector2.new(100 + (i * 10), (i - 1) * 40))
+          Vector2.new(100 + (name * 10), (name - 1) * 40))
       end
       bar.imguiReset = false
     end
 
     -- Set flags to disable all unnecessary decorations.
     if ImGui.GetIO().KeyCtrl then
-      huds[i].WindowSettings =
+      huds[name].WindowSettings =
           _imgui.ImGuiWindowFlags.NoScrollbar +
           _imgui.ImGuiWindowFlags.NoCollapse
     else
-      huds[i].WindowSettings =
+      huds[name].WindowSettings =
           _imgui.ImGuiWindowFlags.NoTitleBar +
           _imgui.ImGuiWindowFlags.NoScrollbar + -- Prevent scrollbars explicitly.
           _imgui.ImGuiWindowFlags.NoMove +      -- Prevent moving unless Ctrl is pressed.
@@ -406,13 +274,13 @@ hudCreate = function(bar, i)
   end)
 
   -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
-  huds[i].OnRender.Add(function()
+  huds[name].OnRender.Add(function()
     if bar.init then
       bar:init()
       bar.init = nil
     end
 
-    if ImGui.BeginChild(bar.name .. "##" .. i, Vector2.new(0, 0), false, huds[i].WindowSettings) then
+    if ImGui.BeginChild(bar.name .. "##" .. name, Vector2.new(0, 0), false, huds[name].WindowSettings) then
       local fontScale = bar.settings.fontScale_num or 1
       ImGui.SetWindowFontScale(fontScale)
 
@@ -495,6 +363,128 @@ end
 -- Create HUDs for each bar as invisible windows
 for i, bar in ipairs(bars) do
   if bar.settings and bar.settings.enabled then
-    hudCreate(bar, i)
+    hudCreate(bar)
   end
 end
+
+
+----------------------------------------
+--- CREATE SETTINGS HUD
+----------------------------------------
+
+
+local function ColorConvertVector3ToU32(colorVector)
+  -- Clamp values to [0, 1] range
+  local r = math.max(0, math.min(1, colorVector.x))
+  local g = math.max(0, math.min(1, colorVector.y))
+  local b = math.max(0, math.min(1, colorVector.z))
+
+  -- Convert to 0-255 range and round to nearest integer
+  local r_int = math.floor(r * 255 + 0.5)
+  local g_int = math.floor(g * 255 + 0.5)
+  local b_int = math.floor(b * 255 + 0.5)
+
+  -- Combine into a single U32 value (assuming ABGR format)
+  return 0xFF000000 + (b_int * 65536) + (g_int * 256) + r_int
+end
+
+local settingsHud = views.Huds.CreateHud("Bar Settings")
+local function renderBars(bar)
+  if ImGui.CollapsingHeader(bar.name) then
+    for settingName, setting in pairs(bar.settings) do
+      ImGui.Text(settingName)
+      ImGui.SameLine()
+      local settingType = settingName:match(".*_(.*)$")
+
+      if settingType == nil then
+        local checked = setting
+        local changed = ImGui.Checkbox("##" .. bar.name .. "_" .. settingName, checked)
+        if changed then
+          checked = not checked
+          bar.settings[settingName] = checked
+          if settingName == "enabled" then
+            if checked then
+              hudCreate(bar)
+            else
+              bar.hud.Dispose()
+              bar.hud = nil
+            end
+          end
+          SaveBarSettings(bar, "settings." .. settingName, checked)
+        end
+      elseif settingType == "col4" then
+        local color = ImGui.ColorConvertU32ToFloat4(setting)
+        local changed, changedColor = ImGui.ColorEdit4("##" .. bar.name .. "_" .. settingName, color)
+        if changed then
+          ---@diagnostic disable-next-line
+          local newColor = ImGui.ColorConvertFloat4ToU32(changedColor)
+          bar.settings[settingName] = newColor
+          SaveBarSettings(bar, "settings." .. settingName, newColor)
+        end
+      elseif settingType == "col3" then
+        local color = ImGui.ColorConvertU32ToFloat4(setting)
+        local color3 = Vector3.new(color.X, color.Y, color.Z)
+        local changed, changedColor = ImGui.ColorEdit3("##" .. bar.name .. "_" .. settingName, color3)
+        if changed then
+          ---@diagnostic disable-next-line
+          local newColor = ColorConvertVector3ToU32(changedColor)
+          bar.settings[settingName] = newColor
+          SaveBarSettings(bar, "settings." .. settingName, newColor)
+        end
+      elseif settingType == "num" then
+        local value = setting
+        local changed, changedValue = ImGui.InputInt("##" .. bar.name .. "_" .. settingName, value, 1, 100)
+        if changed then
+          bar.settings[settingName] = changedValue
+          SaveBarSettings(bar, "settings." .. settingName, changedValue)
+        end
+      elseif settingType == "str" then
+        local value = setting
+        local valueBuffer = value
+        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "_" .. settingName, valueBuffer, 256)
+        if changed then
+          if changedValue ~= "" then
+            bar.settings[settingName] = changedValue
+            SaveBarSettings(bar, "settings." .. settingName, changedValue)
+          end
+        end
+      elseif settingType == "hex" then
+        local value = string.format("0x%X", setting)
+        local valueBuffer = value
+        local changed, changedValue = ImGui.InputText("##" .. bar.name .. "_" .. settingName, valueBuffer, 256)
+        if changed then
+          if changedValue ~= "" then
+            bar.settings[settingName] = tonumber(changedValue)
+            SaveBarSettings(bar, "settings." .. settingName, tonumber(changedValue))
+          end
+        end
+      elseif settingType == "combo" then
+        ---@diagnostic disable-next-line
+        local listItems = { unpack(setting, 2, #setting) }
+        local changed, newIndex = ImGui.Combo("##" .. bar.name .. "_" .. settingName, setting[1] - 1, listItems,
+          #listItems)                                                                                                   -- -1 for imgui
+        if changed then
+          bar.settings[settingName][1] = newIndex + 1                                                                   -- +1 for lua
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
+        end
+      else
+        ImGui.Text(tostring(setting))
+      end
+    end
+  end
+end
+settingsHud.OnRender.Add(function()
+  ImGui.Text("Active Bars")
+  for i, bar in ipairs(bars) do
+    if bar.hud then
+      renderBars(bar)
+    end
+  end
+  ImGui.NewLine()
+  ImGui.Text("Inactive Bars")
+  for i, bar in ipairs(bars) do
+    if bar.hud == nil then
+      renderBars(bar)
+    end
+  end
+end)
