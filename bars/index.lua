@@ -391,6 +391,10 @@ local function ColorConvertVector3ToU32(colorVector)
 end
 
 local function renderBars(bar)
+  if bar.settingsTreeClose then
+    ImGui.SetNextItemOpen(false)
+    bar.settingsTreeClose=nil
+  end
   if ImGui.CollapsingHeader(bar.name) then
     for settingName, setting in pairs(bar.settings) do
       ImGui.Text(settingName)
@@ -407,6 +411,7 @@ local function renderBars(bar)
             if checked then
               hudCreate(bar)
             else
+              bar.settingsTreeClose = true
               bar.hud.Dispose()
               bar.hud = nil
             end
