@@ -1222,7 +1222,6 @@ bars({
       bar.rememberedSlots = {}
     end,
     showGear = function(bar)
-      bar:scan()
       local style = ImGui.GetStyle()
       local miscPadding = style.CellPadding + style.FramePadding + style.ItemSpacing + style.WindowPadding
       for _, profile in ipairs(bar.profiles) do
@@ -1371,6 +1370,7 @@ bars({
         if bar.profileName ~= "" then
           bar.imguiReset = true
           bar.renderContext = "showGearCtx"
+          bar:scan()
           bar.render = bar.showGear
         else
           print("Invalid profile name")
