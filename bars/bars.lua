@@ -1002,7 +1002,67 @@ bars({
     },
     init = function(bar)
       if game.ServerName ~= "Daralet" then
-        print("BlueAetheria disabled due to unusability when not on Daralet")
+        print(bar.name .. " disabled due to unusability when not on Daralet")
+        bar.render = function() end
+        return
+      end
+      local function scan()
+        for _, item in ipairs(game.Character.Equipment) do
+          bar.id = nil
+          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
+            bar.id = item.Id
+            break
+          end
+        end
+      end
+      scan()
+      game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
+        if bar.id and cooldownChanged.Cooldown.ObjectId == bar.id then
+          bar.cooldown = cooldownChanged.Cooldown.ExpiresAt
+        end
+      end)
+      game.Messages.Incoming.Qualities_UpdateInstanceID.Add(function(updateInstance)
+        local objectId = updateInstance.Data.ObjectId
+        local weenie = game.World.Get(objectId)
+        if not weenie or weenie.Value(IntId.ValidLocations) ~= EquipMask[bar.name] then
+          return
+        elseif updateInstance.Data.Key == InstanceId.Container and updateInstance.Data.Value == game.CharacterId then
+          sleep(333)
+          scan()
+        elseif (updateInstance.Data.Key == InstanceId.Wielder and updateInstance.Data.Value == 0) then
+          sleep(333)
+          scan()
+        end
+      end)
+    end,
+    render = function(bar)
+      if bar.id and game.World.Exists(bar.id) then
+        if bar.cooldown then
+          local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          if rem > 0 then
+            bar.label = string.format("%.1f", rem)
+          else
+            bar.cooldown = nil
+            bar.label = nil
+          end
+        end
+        local aetheria = game.World.Get(bar.id)
+        local icon = aetheria.Value(DataId.Icon)
+        DrawIcon(bar, icon)
+      else
+        DrawIcon(bar, 0x06006C0A)
+      end
+    end,
+  },
+  {
+    name = "YellowAetheria", --important, must be correctly capitalized for enum to work
+    settings = {
+      enabled = false,
+      fontScale_num = 2
+    },
+    init = function(bar)
+      if game.ServerName ~= "Daralet" then
+        print(bar.name .. " disabled due to unusability when not on Daralet")
         bar.render = function() end
         return
       end

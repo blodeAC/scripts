@@ -224,6 +224,14 @@ local huds = {}
 
 local hudCreate = function(bar)
   local name = bar.name
+  local i
+  for j,test in ipairs(bars) do
+    if test.name == name then
+      i=j
+      break
+    end
+  end
+
   if bar.settings and bar.settings.icon_hex then
     huds[name] = views.Huds.CreateHud(bar.name, bar.settings.icon_hex)
   else
@@ -249,11 +257,11 @@ local hudCreate = function(bar)
     if bar.imguiReset then
       if bar.renderContext == nil then
         ImGui.SetNextWindowSize(bar.size and bar.size or Vector2.new(100, 100))
-        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (name * 10), (name - 1) * 40))
+        ImGui.SetNextWindowPos(bar.position and bar.position or Vector2.new(100 + (i * 10), (i - 1) * 40))
       else
         ImGui.SetNextWindowSize(bar[bar.renderContext] and bar[bar.renderContext].size or Vector2.new(100, 100))
         ImGui.SetNextWindowPos(bar[bar.renderContext] and bar[bar.renderContext].position or
-          Vector2.new(100 + (name * 10), (name - 1) * 40))
+          Vector2.new(100 + (i * 10), (i - 1) * 40))
       end
       bar.imguiReset = false
     end
