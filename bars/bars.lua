@@ -437,11 +437,11 @@ bars({
         local dist = tonumber(bar:text())
         if not dist then
           return 0xFFFFFFFF -- doesn't matter but need to return something
-        elseif dist > bar.settings.maxDistance then
+        elseif dist > (bar.settings.maxDistance or 9999) then
           return 0xFFFFFFFF --AABBGGRR, so white
-        elseif dist > bar.settings.range1 then
+        elseif dist > (bar.settings.range1 or 9999) then
           return 0xFFFFFFFF
-        elseif dist > bar.settings.minDistance then
+        elseif dist > (bar.settings.minDistance or 0) then
           return 0xFF00FF00 --AABBGGRR, so red
         else
           return 0xFFFFFFFF --doesn't matter but need to return something
@@ -451,7 +451,13 @@ bars({
     text = function(bar)
       if game.World.Selected == nil or game.World.Selected.ObjectClass ~= ObjectClass.Monster then return "" end
       local dist = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))
-      return dist > bar.settings.minDistance and dist < bar.settings.maxDistance and string.format("%.0f", dist) or ""
+      if not bar.settings.minDistance_num then
+        bar.settings.minDistance_num=0
+      end
+      if not bar.settings.maxDistance_num then
+        bar.settings.maxDistance_num=9999
+      end
+      return dist > bar.settings.minDistance_num and dist < bar.settings.maxDistance_num and string.format("%.0f", dist) or ""
     end
   },
   {
