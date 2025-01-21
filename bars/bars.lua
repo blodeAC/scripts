@@ -428,7 +428,9 @@ bars({
       fontScale_num = 1.5,
       icon_hex = 0x060064E5,
       minDistance_num = 35,
+      minDistance_col = 0xFF00FF00,
       range1_num = 50,
+      range1_col = 0xFFFFFFFF,
       maxDistance_num = 60,
     },
     windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
@@ -436,15 +438,15 @@ bars({
       { _imgui.ImGuiCol.Text, function(bar)
         local dist = tonumber(bar:text())
         if not dist then
-          return 0xFFFFFFFF -- doesn't matter but need to return something
-        elseif dist > (bar.settings.maxDistance or 9999) then
-          return 0xFFFFFFFF --AABBGGRR, so white
-        elseif dist > (bar.settings.range1 or 9999) then
-          return 0xFFFFFFFF
-        elseif dist > (bar.settings.minDistance or 0) then
-          return 0xFF00FF00 --AABBGGRR, so red
+          return 0xFFFFFFFF -- will not show
+        elseif dist > (bar.settings.maxDistance_num or 9999) then
+          return 0xFFFFFFFF -- will not show
+        elseif dist > (bar.settings.range1_num or 9999) then
+          return bar.settings.range1_col 
+        elseif dist > (bar.settings.minDistance_num or 0) then
+          return bar.minDistance_col --AABBGGRR, so red
         else
-          return 0xFFFFFFFF --doesn't matter but need to return something
+          return 0xFFFFFFFF -- doesn't matter but need to return something
         end
       end }
     },
