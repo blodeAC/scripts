@@ -492,7 +492,7 @@ local function renderBars(bar)
         local max = setting[3]
         local changed, changedValue = ImGui.SliderFloat("##" .. bar.name .. "_" .. settingName,valueBuffer,min,max,"%.2f")
         if changed then
-          bar.settings[settingName] = {math.floor(changedValue+0.5), min, max}
+          bar.settings[settingName] = {changedValue, min, max}
           SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       else

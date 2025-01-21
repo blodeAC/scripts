@@ -39,7 +39,7 @@ end
 
 -- FUNCTIONS USED BY BARS
 local function sortbag(bar, inscription, containerHolder, func)
-  if bar.sortBag == nil or game.World.Exists(bar.sortBag) == nil then
+  if bar.sortBag == nil or game.World.Exists(bar.sortBag) == false then
     for _, bag in ipairs(containerHolder.Containers) do
       game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
         if bag.Id == e.Data.ObjectId then
@@ -443,7 +443,7 @@ bars({
           return 0xFFFFFFFF -- will not show
         elseif dist > (bar.settings.range1_num or 9999) then
           return bar.settings.range1_col4 
-        elseif dist > (bar.settings.minDistance_num or 0) then
+        elseif dist >= (bar.settings.minDistance_num or 0) then
           return bar.settings.minDistance_col4 --AABBGGRR, so red
         else
           return 0xFFFFFFFF -- doesn't matter but need to return something
@@ -656,7 +656,7 @@ bars({
     },
     text = function(bar) return "AP=0.51" end,
     func = function(bar)
-      game.Actions.InvokeChat("/vt setattackbar " .. bar.settings.attackBar_pct)
+      game.Actions.InvokeChat("/vt setattackbar " .. bar.settings.attackBar_pct[1])
     end
   },
   {
@@ -1025,6 +1025,7 @@ bars({
         end
       end
       scan()
+      ---@param cooldownChanged SharedCooldownsChangedEventArgs
       game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
         if bar.id and cooldownChanged.Cooldown.ObjectId == bar.id then
           bar.cooldown = cooldownChanged.Cooldown.ExpiresAt
@@ -1047,12 +1048,12 @@ bars({
     render = function(bar)
       if bar.id and game.World.Exists(bar.id) then
         if bar.cooldown then
-          local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          local rem =  (bar.cooldown - DateTime.UtcNow).TotalSeconds
           if rem > 0 then
-            bar.label = string.format("%.1f", rem)
+            bar.settings.label_str = string.format("%.1f", rem)
           else
             bar.cooldown = nil
-            bar.label = nil
+            bar.settings.label_str = nil
           end
         end
         local aetheria = game.World.Get(bar.id)
@@ -1116,12 +1117,12 @@ bars({
     render = function(bar)
       if bar.id and game.World.Exists(bar.id) then
         if bar.cooldown then
-          local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          local rem =  (bar.cooldown - DateTime.UtcNow).TotalSeconds
           if rem > 0 then
-            bar.label = string.format("%.1f", rem)
+            bar.settings.label_str = string.format("%.1f", rem)
           else
             bar.cooldown = nil
-            bar.label = nil
+            bar.settings.label_str = nil
           end
         end
         local aetheria = game.World.Get(bar.id)
