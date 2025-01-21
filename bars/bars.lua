@@ -1047,6 +1047,12 @@ bars({
           end
         end
         local aetheria = game.World.Get(bar.id)
+        local underlay = aetheria.Value(DataId.IconUnderlay)
+        if underlay ~= 0 then
+          local cursorPos=ImGui.GetCursorScreenPos()
+          DrawIcon(bar,underlay)
+          ImGui.SetCursorScreenPos(cursorPos)
+        end
         local icon = aetheria.Value(DataId.Icon)
         DrawIcon(bar, icon)
       else
@@ -1107,6 +1113,12 @@ bars({
           end
         end
         local aetheria = game.World.Get(bar.id)
+        local underlay = aetheria.Value(DataId.IconUnderlay)
+        if underlay ~= 0 then
+          local cursorPos=ImGui.GetCursorScreenPos()
+          DrawIcon(bar,underlay)
+          ImGui.SetCursorScreenPos(cursorPos)
+        end
         local icon = aetheria.Value(DataId.Icon)
         DrawIcon(bar, icon)
       else
