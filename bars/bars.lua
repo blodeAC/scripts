@@ -1539,19 +1539,10 @@ bars({
     settings = {
       enabled = false,
       showItemBuffs = false,
-      reverseSort = false
+      reverseSort = false,
+      sortingOptions_combo = {1, "Name", "Id", "Category", "StatModType", "ExpiresAt", "Level", "Power"}
     },
     init = function(bar)
-      bar.sortOption = 0
-      bar.sortingOptions = {
-        "Name",
-        "Id",
-        "Category",
-        "StatModType",
-        "ExpiresAt",
-        "Level",
-        "Power"
-      }
       function bar.formatSeconds(seconds)
         local hours = math.floor(seconds / 3600)
         local minutes = math.floor((seconds % 3600) / 60)
@@ -1655,10 +1646,10 @@ bars({
         end
       end
 
-      local sortKey = bar.sortingOptions[bar.sortOption + 1]
+      local sortKey = bar.settings.sortingOptions_combo[bar.settings.sortingOptions_combo[1]+1]
       for i, buffsOrDebuffs in pairs(activeSpells) do
         table.sort(buffsOrDebuffs, function(a, b)
-          if bar.reverseSort then
+          if bar.settings.reverseSort then
             return a[sortKey] > b[sortKey]
           else
             return a[sortKey] < b[sortKey]
@@ -1667,6 +1658,8 @@ bars({
       end
 
       local checkboxSize = Vector2.new(24, 24)
+      local windowSize = ImGui.GetWindowSize()
+      local windowPos = ImGui.GetWindowPos()
       local reservedHeight = checkboxSize.Y + ImGui.GetStyle().ChildBorderSize * 2
 
       -- Calculate the available space for the table
@@ -1763,63 +1756,41 @@ bars({
         ImGui.EndTable()
       end
 
-      local cursorForCheckbox = ImGui.GetCursorScreenPos()
-      local function checkbox(label, setting, plusOrMinus)
-        -- Get the position and size for the checkbox
-        local cursor = ImGui.GetCursorScreenPos()
+      local spacingBetweenLabelX=5
+      ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing,Vector2.new(spacingBetweenLabelX,0))
+      
+      ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()+Vector2.new(spacingBetweenLabelX,3))
 
-        -- Calculate the bounding box for the checkbox
-        local mouse = ImGui.GetMousePos()
-        local isHovered = mouse.X >= cursor.X and mouse.X <= cursor.X + checkboxSize.X and
-            mouse.Y >= cursor.Y and mouse.Y <= cursor.Y + checkboxSize.Y
-
-        -- Handle input
-        if isHovered and ImGui.IsMouseClicked(0) then
-          bar[setting] = not bar[setting]
-        end
-
-        local drawlist = ImGui.GetWindowDrawList()
-        -- Draw the checkbox
-        ImGui.InvisibleButton("##checkbox" .. setting, checkboxSize)
-
-        if plusOrMinus then
-          drawlist.AddLine(cursor + Vector2.new(3, checkboxSize.Y / 2),
-            cursor + Vector2.new(checkboxSize.X - 3, checkboxSize.Y / 2), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
-          if not bar[setting] then
-            drawlist.AddLine(cursor + Vector2.new(checkboxSize.X / 2, 3),
-              cursor + Vector2.new(checkboxSize.X / 2, checkboxSize.Y - 3), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
-          end
-        elseif bar[setting] then
-          drawlist.AddRectFilled(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.CheckMark))
-        else
-          drawlist.AddRect(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.Border))
-        end
-
-
-        ImGui.SetCursorScreenPos(Vector2.new(cursorForCheckbox.X + checkboxSize.X + 5,
-          cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2))
-        ImGui.Text(label)
-
-        return bar[setting]
-      end
-      if checkbox("Show Item Buffs", "showItemBuffs") then end
-
-      local cursorForOptions = Vector2.new(ImGui.GetWindowPos().X + ImGui.GetWindowWidth() / 2 + 5,
-        cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2)
-      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X - checkboxSize.X,
-        cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2))
-      ImGui.Text("Sort by: ")
-      ImGui.SameLine()
-      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X + checkboxSize.X - 5, cursorForCheckbox.Y))
-
-      if checkbox("", "reverseSort", true) then end
-      ImGui.SameLine()
-      ImGui.SetNextItemWidth(-1)
-      ImGui.SetCursorScreenPos(cursorForOptions + Vector2.new(checkboxSize.X * 2, 0))
-      local changed, newIndex = ImGui.Combo("##sortOption", bar.sortOption, bar.sortingOptions, #bar.sortingOptions)
+      local changed, checked = ImGui.Checkbox("Show Item Buffs     ##" .. bar.name, bar.settings.showItemBuffs)
       if changed then
-        bar.sortOption = newIndex
+        bar.settings.showItemBuffs = checked
       end
+
+      ImGui.SameLine()
+      ImGui.Text("Sort by ")
+      
+      ImGui.SameLine()
+      ImGui.SetNextItemWidth(100)
+
+      ---@diagnostic disable-next-line
+      local sortOptions = { unpack(bar.settings.sortingOptions_combo,2,#bar.settings.sortingOptions_combo) }
+      local sortIndex = bar.settings.sortingOptions_combo[1]-1
+      local changed2, newIndex = ImGui.Combo("##sortOption", sortIndex, sortOptions, #bar.settings.sortingOptions_combo - 1 )
+      if changed2 then
+        bar.settings.sortingOptions_combo[1] = newIndex+1
+        SaveBarSettings(bar,"settings.sortingOptions_combo",bar.settings.sortingOptions_combo)
+      end
+
+      ImGui.SameLine()
+      ImGui.Text("     Desc ")
+
+      ImGui.SameLine()
+      local changed3, checked3 = ImGui.Checkbox("##" .. bar.name .. "_reverseSort", bar.settings.reverseSort)
+      if changed3 then
+        bar.settings.reverseSort = checked3
+      end
+
+      ImGui.PopStyleVar()
     end
   },
   {

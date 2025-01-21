@@ -429,6 +429,7 @@ local function renderBars(bar)
         end
       elseif settingType == "col4" then
         local color = ImGui.ColorConvertU32ToFloat4(setting)
+        ImGui.SetNextItemWidth(-1)
         local changed, changedColor = ImGui.ColorEdit4("##" .. bar.name .. "_" .. settingName, color)
         if changed then
           ---@diagnostic disable-next-line
@@ -439,6 +440,7 @@ local function renderBars(bar)
       elseif settingType == "col3" then
         local color = ImGui.ColorConvertU32ToFloat4(setting)
         local color3 = Vector3.new(color.X, color.Y, color.Z)
+        ImGui.SetNextItemWidth(-1)
         local changed, changedColor = ImGui.ColorEdit3("##" .. bar.name .. "_" .. settingName, color3)
         if changed then
           ---@diagnostic disable-next-line
@@ -448,6 +450,7 @@ local function renderBars(bar)
         end
       elseif settingType == "num" then
         local value = setting
+        ImGui.SetNextItemWidth(-1)
         local changed, changedValue = ImGui.InputInt("##" .. bar.name .. "_" .. settingName, value, 1, 100)
         if changed then
           bar.settings[settingName] = changedValue
@@ -455,6 +458,7 @@ local function renderBars(bar)
         end
       elseif settingType == "flt" then
         local value = setting
+        ImGui.SetNextItemWidth(-1)
         local changed, changedValue = ImGui.InputFloat("##" .. bar.name .. "_" .. settingName, value, 0.1, 1)
         if changed then
           bar.settings[settingName] = changedValue
@@ -463,6 +467,7 @@ local function renderBars(bar)
       elseif settingType == "str" then
         local value = setting
         local valueBuffer = value
+        ImGui.SetNextItemWidth(-1)
         local changed, changedValue = ImGui.InputTextMultiline("##" .. bar.name .. "_" .. settingName, valueBuffer, 256,Vector2.new(-1,(select(2, string.gsub(valueBuffer, "\n", "\n"))+1)*ImGui.GetTextLineHeightWithSpacing()+ImGui.GetStyle().FramePadding.Y))
         if changed then
           bar.settings[settingName] = changedValue
@@ -471,6 +476,7 @@ local function renderBars(bar)
       elseif settingType == "hex" then
         local value = string.format("0x%X", setting)
         local valueBuffer = value
+        ImGui.SetNextItemWidth(-1)
         local changed, changedValue = ImGui.InputText("##" .. bar.name .. "_" .. settingName, valueBuffer, 256)
         if changed then
           bar.settings[settingName] = tonumber(changedValue)
@@ -479,6 +485,7 @@ local function renderBars(bar)
       elseif settingType == "combo" then
         ---@diagnostic disable-next-line
         local listItems = { unpack(setting, 2, #setting) }
+        ImGui.SetNextItemWidth(-1)
         local changed, newIndex = ImGui.Combo("##" .. bar.name .. "_" .. settingName, setting[1] - 1, listItems,
           #listItems)                                                                                                   -- -1 for imgui
         if changed then
@@ -490,6 +497,7 @@ local function renderBars(bar)
         local valueBuffer = value
         local min = setting[2]
         local max = setting[3]
+        ImGui.SetNextItemWidth(-1)
         local changed, changedValue = ImGui.SliderFloat("##" .. bar.name .. "_" .. settingName,valueBuffer,min,max,"%.2f")
         if changed then
           bar.settings[settingName] = {changedValue, min, max}
