@@ -63,14 +63,43 @@ end
 --- Settings Saving/Loading
 ----------------------------------------
 
--- Load settings from a JSON file
-local function loadSettings()
+---@type string[]
+local availableToImport={}
+local function populateImport()
+
   local files = io.FileExists(settingsFile)
   if files then
     local content = io.ReadText(settingsFile)
     local settings = json.parse(content)
-    if settings and settings[game.ServerName] and settings[game.ServerName][game.Character.Weenie.Name] then
-      local characterSettings = settings[game.ServerName][game.Character.Weenie.Name]
+    for server,characterTable in pairs(settings) do
+      for name,charSettings in pairs(characterTable) do
+        table.insert(availableToImport,server .. " > " .. name)
+      end
+    end
+  end
+end
+populateImport()
+
+-- Load settings from a JSON file
+local function loadSettings(server,character)
+  if server or character then
+    if not server or not character then
+      return "Invalid character or server"
+    end
+  end
+  server = server or game.ServerName
+  character = character or game.Character.Weenie.Name
+  local function importSave(bar,key,value)
+    if server~=game.ServerName or character~=game.Character.Weenie.Name then
+      SaveBarSettings(bar,key,value)
+    end
+  end
+  local files = io.FileExists(settingsFile)
+  if files then
+    local content = io.ReadText(settingsFile)
+    local settings = json.parse(content)
+    if settings and settings[server] and settings[server][character] then
+      local characterSettings = settings[server][character]
       for i, bar in ipairs(bars) do
         if characterSettings[bar.name] then
           for key, value in pairs(characterSettings[bar.name]) do
@@ -78,20 +107,28 @@ local function loadSettings()
               bar[key] = {}
               bar[key].position = Vector2.new(value.position.X, value.position.Y)
               bar[key].size = Vector2.new(value.size.X, value.size.Y)
+              importSave(bar,"position",{X=value.position.X,Y=value.position.Y})
+              importSave(bar,"size",{X=value.size.X,Y=value.size.Y})
             elseif key == "position" then
               bar[key] = Vector2.new(value.X, value.Y)
+              importSave(bar,"position",{X=value.X,Y=value.Y})
             elseif key == "size" then
               bar[key] = Vector2.new(value.X, value.Y)
+              importSave(bar,"size",{X=value.X,Y=value.Y})
             elseif key == "settings" then
               for nestedKey, nestedVal in pairs(value) do
                 bar.settings[nestedKey] = nestedVal
               end
+              importSave(bar, "settings", value)
             else
               bar[key] = value
+              importSave(bar, key, value)
             end
           end
         end
       end
+    else 
+      return "No settings found for server or character. Capitalization matters"
     end
   end
 end
@@ -526,6 +563,9 @@ local function renderBars(bar)
     end
   end
 end
+
+local importIndex=0
+local importProfile
 settingsHud.OnRender.Add(function()
   ImGui.Text("Active Bars")
   for i, bar in ipairs(bars) do
@@ -536,8 +576,23 @@ settingsHud.OnRender.Add(function()
   ImGui.NewLine()
   ImGui.Text("Inactive Bars")
   for i, bar in ipairs(bars) do
-    if bar.hud == nil then
+    if bar.settings.enabled and bar.hud == nil then
+      hudCreate(bar)
+    elseif bar.hud == nil then
       renderBars(bar)
     end
+  end
+  
+  ImGui.NewLine()
+  ImGui.SetNextItemWidth(-1)
+  if ImGui.Button("Import Settings##importsettings") then
+    local server, character = importProfile:match("([^,]+),([^,]+)")
+    loadSettings(server,character)
+  end
+  ---@type boolean,number|nil
+  local changed,newCharIndex = ImGui.Combo("##importServerCharacter",importIndex,availableToImport,#availableToImport)
+  if changed or not importProfile then
+    importIndex=newCharIndex or 0
+    importProfile=string.gsub(availableToImport[newCharIndex+1]," > ",",")
   end
 end)
