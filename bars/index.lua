@@ -26,11 +26,11 @@ function DrawIcon(bar, overrideId, size, func)
   if not size then
     size = ImGui.GetContentRegionAvail()
   end
-  local bar_position = ImGui.GetCursorScreenPos().X .."-".. ImGui.GetCursorScreenPos().Y
+  local bar_position = ImGui.GetCursorScreenPos().X .. "-" .. ImGui.GetCursorScreenPos().Y
 
   local texture = overrideId and GetOrCreateTexture(overrideId) or GetOrCreateTexture(bar.settings.icon_hex)
   if not texture then return false end
-  
+
   if overrideId then
     if ImGui.TextureButton("##" .. bar_position .. overrideId, texture, size) then
       func()
@@ -188,10 +188,12 @@ loadSettings()
 
 local function imguiAligner(bar, text, start, size)
   -- Default to current cursor position and content region if not provided
-  start = start or ImGui.GetCursorScreenPos() or Vector2.new(0, 0)                                                                               -- Ensure it's not nil
+  start = start or ImGui.GetCursorScreenPos() or
+  Vector2.new(0, 0)                                                -- Ensure it's not nil
   size = size or ImGui.GetContentRegionAvail()
   local textAlignment = bar.settings.textAlignment_combo and
-  bar.settings.textAlignment_combo[bar.settings.textAlignment_combo[1] + 1] or "center"                                                          --+1 for self
+      bar.settings.textAlignment_combo[bar.settings.textAlignment_combo[1] + 1] or
+      "center"                                                                          --+1 for self
 
   -- Calculate the size of the text to align
   local textSize = ImGui.CalcTextSize(text)
@@ -227,9 +229,9 @@ local huds = {}
 local hudCreate = function(bar)
   local name = bar.name
   local i
-  for j,test in ipairs(bars) do
+  for j, test in ipairs(bars) do
     if test.name == name then
-      i=j
+      i = j
       break
     end
   end
@@ -378,11 +380,9 @@ for i, bar in ipairs(bars) do
   end
 end
 
-
 ----------------------------------------
 --- CREATE SETTINGS HUD
 ----------------------------------------
-
 
 local function ColorConvertVector3ToU32(colorVector)
   -- Clamp values to [0, 1] range
@@ -402,12 +402,24 @@ end
 local function renderBars(bar)
   if bar.settingsTreeClose then
     ImGui.SetNextItemOpen(false)
-    bar.settingsTreeClose=nil
+    bar.settingsTreeClose = nil
   end
   if ImGui.CollapsingHeader(bar.name) then
+    local maxX=0
+    bar.settingX=0
+    for settingName, setting in pairs(bar.settings) do
+      local X=ImGui.CalcTextSize(settingName).X
+      if X>maxX then
+        bar.settingX=X
+        maxX=X
+      end
+    end
+    local style=ImGui.GetStyle()
+    bar.settingX=bar.settingX-style.ItemSpacing.X-style.ItemInnerSpacing.X-style.FramePadding.X-style.CellPadding.X-style.ColumnsMinSpacing-style.IndentSpacing
     for settingName, setting in pairs(bar.settings) do
       ImGui.Text(settingName)
       ImGui.SameLine()
+      ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowPos().X+bar.settingX+5,ImGui.GetCursorPosY()))
       local settingType = settingName:match(".*_(.*)$")
 
       if settingType == nil then
@@ -468,7 +480,10 @@ local function renderBars(bar)
         local value = setting
         local valueBuffer = value
         ImGui.SetNextItemWidth(-1)
-        local changed, changedValue = ImGui.InputTextMultiline("##" .. bar.name .. "_" .. settingName, valueBuffer, 256,Vector2.new(-1,(select(2, string.gsub(valueBuffer, "\n", "\n"))+1)*ImGui.GetTextLineHeightWithSpacing()+ImGui.GetStyle().FramePadding.Y))
+        local changed, changedValue = ImGui.InputTextMultiline("##" .. bar.name .. "_" .. settingName, valueBuffer, 256,
+          Vector2.new(-1,
+            (select(2, string.gsub(valueBuffer, "\n", "\n")) + 1) * ImGui.GetTextLineHeightWithSpacing() +
+            ImGui.GetStyle().FramePadding.Y))
         if changed then
           bar.settings[settingName] = changedValue
           SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
@@ -487,20 +502,22 @@ local function renderBars(bar)
         local listItems = { unpack(setting, 2, #setting) }
         ImGui.SetNextItemWidth(-1)
         local changed, newIndex = ImGui.Combo("##" .. bar.name .. "_" .. settingName, setting[1] - 1, listItems,
-          #listItems)                                                                                                   -- -1 for imgui
+          #listItems)                                                                                                        -- -1 for imgui
         if changed then
-          bar.settings[settingName][1] = newIndex + 1                                                                   -- +1 for lua
+          bar.settings[settingName][1] = newIndex +
+          1                                                                                                                  -- +1 for lua
           SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
-      elseif settingType=="pct" then
+      elseif settingType == "pct" then
         local value = setting[1]
         local valueBuffer = value
         local min = setting[2]
         local max = setting[3]
         ImGui.SetNextItemWidth(-1)
-        local changed, changedValue = ImGui.SliderFloat("##" .. bar.name .. "_" .. settingName,valueBuffer,min,max,"%.2f")
+        local changed, changedValue = ImGui.SliderFloat("##" .. bar.name .. "_" .. settingName, valueBuffer, min, max,
+          "%.2f")
         if changed then
-          bar.settings[settingName] = {changedValue, min, max}
+          bar.settings[settingName] = { changedValue, min, max }
           SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
         end
       else
