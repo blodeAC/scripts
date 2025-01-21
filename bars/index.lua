@@ -26,11 +26,12 @@ function DrawIcon(bar, overrideId, size, func)
   if not size then
     size = ImGui.GetContentRegionAvail()
   end
-
   local bar_position = ImGui.GetCursorScreenPos().X .."-".. ImGui.GetCursorScreenPos().Y
+
+  local texture = overrideId and GetOrCreateTexture(overrideId) or GetOrCreateTexture(bar.settings.icon_hex)
+  if not texture then return false end
+  
   if overrideId then
-    local texture = GetOrCreateTexture(overrideId)
-    if not texture then return false end
     if ImGui.TextureButton("##" .. bar_position .. overrideId, texture, size) then
       func()
     end
@@ -55,6 +56,7 @@ function DrawIcon(bar, overrideId, size, func)
   end
   -- Draw text in white
   drawlist.AddText(startText, 0xFFFFFFFF, bar.settings.label_str or "")
+  return true
 end
 
 ----------------------------------------

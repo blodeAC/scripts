@@ -998,7 +998,8 @@ bars({
     name = "BlueAetheria", --important, must be correctly capitalized for enum to work
     settings = {
       enabled = false,
-      fontScale_num = 2
+      icon_hex = 0x0600679F,
+      fontScale_num = 2,
     },
     init = function(bar)
       if game.ServerName ~= "Daralet" then
@@ -1056,7 +1057,9 @@ bars({
         local icon = aetheria.Value(DataId.Icon)
         DrawIcon(bar, icon)
       else
-        DrawIcon(bar, 0x06006C0A)
+        if not DrawIcon(bar, 0x06006C0A) then
+          ImGui.Text("Missing\nTexture!")
+        end
       end
     end,
   },
@@ -1064,6 +1067,7 @@ bars({
     name = "YellowAetheria", --important, must be correctly capitalized for enum to work
     settings = {
       enabled = false,
+      icon_hex = 0x060067A2,
       fontScale_num = 2
     },
     init = function(bar)
@@ -1129,7 +1133,8 @@ bars({
   {
     name = "equipmentManager",
     settings = {
-      enabled = false
+      enabled = false,
+      icon_hex = 0x060018FA,
     },
     styleVar = {
       { _imgui.ImGuiStyleVar.FramePadding, Vector2.new(2, 2) },
