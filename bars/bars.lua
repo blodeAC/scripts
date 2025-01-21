@@ -84,9 +84,9 @@ local function renderEvent(bar)                                                 
 
       -- Scale font based on value relative to the average
       if not entry.scale then
-        entry.scale = string.sub(entry.text, -1) == "!" and entry.fontScaleCrit_num or
-            math.min(math.max((entry.value or average) / average, bar.settings.fontScaleMin_num), bar.settings
-              .fontScaleMax_num)
+        entry.scale = string.sub(entry.text, -1) == "!" and entry.fontScaleCrit_flt or
+            math.min(math.max((entry.value or average) / average, bar.settings.fontScaleMin_flt), bar.settings
+              .fontScaleMax_flt)
       end
       ImGui.SetWindowFontScale(entry.scale)
 
@@ -425,7 +425,7 @@ bars({
     type = "text",
     settings = {
       enabled = false,
-      fontScale_num = 1.5,
+      fontScale_flt = 1.5,
       icon_hex = 0x060064E5,
       minDistance_num = 35,
       minDistance_col4 = 0xFF00FF00,
@@ -442,9 +442,9 @@ bars({
         elseif dist > (bar.settings.maxDistance_num or 9999) then
           return 0xFFFFFFFF -- will not show
         elseif dist > (bar.settings.range1_num or 9999) then
-          return bar.settings.range1_col 
+          return bar.settings.range1_col4 
         elseif dist > (bar.settings.minDistance_num or 0) then
-          return bar.minDistance_col --AABBGGRR, so red
+          return bar.settings.minDistance_col4 --AABBGGRR, so red
         else
           return 0xFFFFFFFF -- doesn't matter but need to return something
         end
@@ -711,9 +711,9 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x060028FC,
-      fontScaleMin_num = 2,
-      fontScaleMax_num = 3,
-      fontScaleCrit_num = 4,
+      fontScaleMin_flt = 2,
+      fontScaleMax_flt = 3,
+      fontScaleCrit_flt = 4,
       fontColorPositive_col3 = 0xFFFFFF,
       fontColorNegative_col3 = 0x0000FF,
       fadeDuration_num = 2, -- How long the text stays on screen
@@ -799,8 +799,8 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x060028FD,
-      fontScaleMin_num = 2,
-      fontScaleMax_num = 3,
+      fontScaleMin_flt = 2,
+      fontScaleMax_flt = 3,
       fontColorPositive_col3 = 0x00FF00,
       fontColorNegative_col3 = 0x0000FF,
       fadeDuration_num = 2, -- How long the text stays on screen
@@ -1007,7 +1007,7 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x0600679F,
-      fontScale_num = 2,
+      fontScale_flt = 2,
     },
     init = function(bar)
       if game.ServerName ~= "Daralet" then
@@ -1076,7 +1076,7 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x060067A2,
-      fontScale_num = 2
+      fontScale_flt = 2
     },
     init = function(bar)
       if game.ServerName ~= "Daralet" then
@@ -1731,7 +1731,7 @@ bars({
                 cursorStartDurationText + durationTextSize + Vector2.new(3, 0), 0xAA000000)
               ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos() - Vector2.new(0, expiryTimerYAdjust))
               ImGui.Text(bar.formatSeconds(expiryTimer))
-              ImGui.SetWindowFontScale(bar.settings.fontScale_num or 1)
+              ImGui.SetWindowFontScale(bar.settings.fontScale_flt or 1)
             end
 
             local cursorPostIcon = cursorStart + Vector2.new(iconSize.X, 0)

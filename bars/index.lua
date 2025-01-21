@@ -292,7 +292,7 @@ local hudCreate = function(bar)
     end
 
     if ImGui.BeginChild(bar.name .. "##" .. name, Vector2.new(0, 0), false, huds[name].WindowSettings) then
-      local fontScale = bar.settings.fontScale_num or 1
+      local fontScale = bar.settings.fontScale_flt or 1
       ImGui.SetWindowFontScale(fontScale)
 
       for _, style in ipairs(bar.styleVar or {}) do
@@ -449,6 +449,13 @@ local function renderBars(bar)
       elseif settingType == "num" then
         local value = setting
         local changed, changedValue = ImGui.InputInt("##" .. bar.name .. "_" .. settingName, value, 1, 100)
+        if changed then
+          bar.settings[settingName] = changedValue
+          SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
+        end
+      elseif settingType == "flt" then
+        local value = setting
+        local changed, changedValue = ImGui.InputFloat("##" .. bar.name .. "_" .. settingName, value, 0.1, 1)
         if changed then
           bar.settings[settingName] = changedValue
           SaveBarSettings(bar, "settings." .. settingName, bar.settings[settingName])
