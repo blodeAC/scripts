@@ -442,7 +442,7 @@ local function renderBars(bar)
     bar.settingsTreeClose = nil
   end
   if ImGui.CollapsingHeader(bar.name) then
-    local maxX=0
+    --[[local maxX=0
     bar.settingX=0
     for settingName, setting in pairs(bar.settings) do
       local X=ImGui.CalcTextSize(settingName).X
@@ -452,11 +452,11 @@ local function renderBars(bar)
       end
     end
     local style=ImGui.GetStyle()
-    bar.settingX=bar.settingX-style.ItemSpacing.X-style.ItemInnerSpacing.X-style.FramePadding.X-style.CellPadding.X-style.ColumnsMinSpacing-style.IndentSpacing
+    bar.settingX=bar.settingX-style.ItemSpacing.X-style.ItemInnerSpacing.X-style.FramePadding.X-style.CellPadding.X-style.ColumnsMinSpacing-style.IndentSpacing--]]
     for settingName, setting in pairs(bar.settings) do
       ImGui.Text(settingName)
       ImGui.SameLine()
-      ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowPos().X+bar.settingX+5,ImGui.GetCursorPosY()))
+      --ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowPos().X+5,ImGui.GetCursorPosY()))
       local settingType = settingName:match(".*_(.*)$")
 
       if settingType == nil then
