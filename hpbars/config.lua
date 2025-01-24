@@ -3,10 +3,6 @@ local ImGui = _imgui.ImGui
 local config={}
 
 config = {
-  ObjectClass = {
-    [ObjectClass.Monster]=0x8000FF00,
-    [ObjectClass.Player]=0x800000FF
-  },
   maxDistanceForVisibility = 100,
   targetHudConfig={
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
