@@ -1,7 +1,12 @@
 local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
 local config={}
+
 config = {
+  ObjectClass = {
+    [ObjectClass.Monster]=0x8000FF00,
+    [ObjectClass.Player]=0x800000FF
+  },
   maxDistanceForVisibility = 100,
   targetHudConfig={
     windowSettings=_imgui.ImGuiWindowFlags.NoInputs+_imgui.ImGuiWindowFlags.NoBackground,
@@ -18,19 +23,16 @@ config = {
     ---@param progressBarStartPos Vector2
     ---@param progressBarSize Vector2
     text = function(progressBarStartPos,progressBarSize)
-      local leftText={}
-      local centeredText={}
-      local rightText={}
       local blankLine= " "
-      centeredText={
+      local centeredText={
         target.name,
         blankLine
       }
-      rightText={
+      local rightText={
         blankLine,
         target.maxHp and ((tostring(math.floor(target.hp*target.maxHp+0.5)) .. " / " .. tostring(target.maxHp)) .. " ") or (tostring(math.floor(target.hp*100)) .. "%%")
       }
-      leftText={
+      local leftText={
         blankLine,
         tostring(game.World.Get(target.id).Value(IntId.Level))~="0" and ("  "..tostring(game.World.Get(target.id).Value(IntId.Level))) or "  ??"
       }

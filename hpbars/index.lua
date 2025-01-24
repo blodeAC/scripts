@@ -7,7 +7,53 @@ local init = function()
   local io = require("filesystem").GetScript()
   targetHud = require("targetFrame")
 
-  wobjects_hp={}
+  local filter = {
+    properties = {
+      ObjectClass = {
+        [ObjectClass.Monster]=0x8000FF00,
+        [ObjectClass.Player]=0x800000FF
+      }
+    },
+    tests = {
+      function(weenie)
+        return weenie.Name ~= ""
+      end
+    }
+  }
+  -- Set metatable for filter with custom contains and check methods
+  setmetatable(filter, {
+    __index = {
+      -- Check if a value exists in a table
+      contains = function(_, table, value)
+        return table[value]~=nil
+      end,
+
+      -- Check if a wobject passes all filter criteria
+      check = function(self, weenie)
+        if weenie.Id == game.CharacterId then
+          return false
+        end
+
+        -- Check properties
+        for prop, category in pairs(self.properties) do
+          if not self:contains(category, weenie[prop]) then
+            return false -- Fail if any property does not match
+          end
+        end
+
+        -- Check custom tests
+        for _, testfunc in pairs(self.tests) do
+          if not testfunc(weenie) then
+            return false -- Fail if any test function returns false
+          end
+        end
+
+        return true -- All filters passed
+      end
+    }
+  })
+
+  wobjects_hp = {}
   -- Metatable for wobject to define health bar related methods
   local wobjectMeta = {
     -- Method to calculate offset coordinates based on angle and scalar
@@ -15,7 +61,7 @@ local init = function()
       if not game.World.Exists(self.id) or acclient.Movement.GetPhysicsCoordinates(self.id) == nil then return nil end
       -- Get the heading and adjust with angle
       local heading = math.rad((acclient.Movement.GetPhysicsCoordinates(self.id).HeadingTo(acclient.Coordinates.Me) + angle) %
-      360)
+        360)
 
       -- Calculate the north-south (Y) and east-west (X) offsets
       local delta_NS = scalar / 2 * math.sin(heading)
@@ -39,8 +85,8 @@ local init = function()
     end,
 
     -- Method to anchor the health bar to the wobject
-    anchorHpBar = function(self, init)    --always chase this with "wobjects_hp[id].redbar.Visible=true" & "wobjects_hp[id].hpbar.Visible=true" to show, since various other things manage vis
-      if (game.World.Selected and game.World.Selected.Id==self.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp) or self.hp==0 then
+    anchorHpBar = function(self, init) --always chase this with "wobjects_hp[id].redbar.Visible=true" & "wobjects_hp[id].hpbar.Visible=true" to show, since various other things manage vis
+      if (game.World.Selected and game.World.Selected.Id == self.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp) or self.hp == 0 then
         return
       else
         local offset = self:getOffsetCoordinates(90, 1 - self.hp)
@@ -73,7 +119,7 @@ local init = function()
       local weenie = game.World.Get(wobject.id)
       wobject.name = weenie.Name
       wobject.objectClass = weenie.ObjectClass
-      
+
       local heritage = weenie.Value(IntId.HeritageGroup, -1)
       wobject.height = 1.1
 
@@ -97,7 +143,7 @@ local init = function()
       wobject.hpbar.ScaleX = wobject.hp
       wobject.hpbar.ScaleY = 0.15
       wobject.hpbar.ScaleZ = 0.15
-      wobject.hpbar.Color = 0x8000FF00
+      wobject.hpbar.Color = filter.properties.ObjectClass[wobject.objectClass]
 
       -- Create red hp bar for background and assign properties
       wobject.redbar = acclient.DecalD3D.NewD3DObj()
@@ -107,7 +153,7 @@ local init = function()
       wobject.redbar.ScaleZ = 0.1
       wobject.redbar.Color = 0x80FF0000
       wobject.redbar.OrientToCamera(false)
-      
+
       wobject:anchorHpBar(true)
       wobject.hpbar.Visible = true
       wobject.redbar.Visible = true
@@ -116,7 +162,7 @@ local init = function()
       self[wobject.id] = wobject
 
       -- Request a health update for the newly inserted wobject
-      if wobject.objectClass==ObjectClass.Monster then
+      if wobject.objectClass == ObjectClass.Monster then
         ---@diagnostic disable-next-line: undefined-field
         acclient.Client.RequestHealthUpdate(wobject.id)
       else
@@ -186,59 +232,6 @@ local init = function()
     [PlayScript.SparkUpRightFront.ToNumber()] = true
   }
 
-  -- Filter table to check properties of wobjects
-  local filter = {
-    properties = {
-      ObjectClass = {
-        ObjectClass.Monster,
-        ObjectClass.Player
-      }
-    },
-    tests = {
-      function(weenie)
-        return weenie.Name ~= ""
-      end
-    }
-  }
-
-  -- Set metatable for filter with custom contains and check methods
-  setmetatable(filter, {
-    __index = {
-      -- Check if a value exists in a table
-      contains = function(_, table, value)
-        for _, v in ipairs(table) do
-          if v == value then
-            return true
-          end
-        end
-        return false
-      end,
-
-      -- Check if a wobject passes all filter criteria
-      check = function(self, weenie)
-        if weenie.Id == game.CharacterId then
-          return false
-        end
-
-        -- Check properties
-        for prop, category in pairs(self.properties) do
-          if not self:contains(category, weenie[prop]) then
-            return false -- Fail if any property does not match
-          end
-        end
-
-        -- Check custom tests
-        for _, testfunc in pairs(self.tests) do
-          if not testfunc(weenie) then
-            return false -- Fail if any test function returns false
-          end
-        end
-
-        return true -- All filters passed
-      end
-    }
-  })
-
   -------------------------------------
   --- events
   -------------------------------------
@@ -268,10 +261,11 @@ local init = function()
           --wobject.expected=false
           wobject:anchorHpBar()
         end
-        if game.World.Selected~=nil and game.World.Selected.Id == e.Data.ObjectId and wobject.maxHp and 
-           (not config.targetHudConfig or not config.targetHudConfig.hideSelectionHp) then
-          wobject.hpText.SetText(acclient.DecalD3DTextType.Text3D, tostring(math.floor(e.Data.HealthPercent*wobject.maxHp+0.5)) .. " / " .. tostring(wobject.maxHp), "Arial",
-          0xFFFFFFFF)
+        if game.World.Selected ~= nil and game.World.Selected.Id == e.Data.ObjectId and wobject.maxHp and
+            (not config.targetHudConfig or not config.targetHudConfig.hideSelectionHp) then
+          wobject.hpText.SetText(acclient.DecalD3DTextType.Text3D,
+            tostring(math.floor(e.Data.HealthPercent * wobject.maxHp + 0.5)) .. " / " .. tostring(wobject.maxHp), "Arial",
+            0xFFFFFFFF)
           wobject.hpText.Visible = true
         end
       end
@@ -286,7 +280,7 @@ local init = function()
 
     -- Request health update if the wobject exists and the script is health-related. Don't send if targeted bc those are free
     if (wobject ~= nil and healthPlayScripts[e.Data.ScriptId] ~= nil) then
-      if wobject.objectClass==ObjectClass.Monster then
+      if wobject.objectClass == ObjectClass.Monster then
         ---@diagnostic disable-next-line: undefined-field
         acclient.Client.RequestHealthUpdate(wobject.id)
       else
@@ -298,10 +292,10 @@ local init = function()
   game.Messages.Incoming.Effects_SoundEvent.Add(function(e)
     local wobjectId = e.Data.ObjectId
     local wobject = wobjects_hp[wobjectId]
-    
+
     if (wobjects_hp[wobjectId] ~= nil and e.Data.SoundType == Sound.HitFlesh1) then
       ---@diagnostic disable-next-line: undefined-field
-      if wobject.objectClass==ObjectClass.Monster then
+      if wobject.objectClass == ObjectClass.Monster then
         ---@diagnostic disable-next-line: undefined-field
         acclient.Client.RequestHealthUpdate(wobject.id)
       else
@@ -311,11 +305,11 @@ local init = function()
   end)
 
   game.Messages.Incoming.Movement_SetObjectMovement.Add(function(movementEvent)
-    local objectId=movementEvent.Data.ObjectId
-    local motion=movementEvent.Data.MovementData.State
-    local dead=(motion and motion.ForwardCommand==MotionCommand.Dead)
+    local objectId = movementEvent.Data.ObjectId
+    local motion = movementEvent.Data.MovementData.State
+    local dead = (motion and motion.ForwardCommand == MotionCommand.Dead)
     if (wobjects_hp[objectId] and dead) then
-      wobjects_hp[objectId].hp=0
+      wobjects_hp[objectId].hp = 0
       wobjects_hp[objectId].redbar.Visible = false
       wobjects_hp[objectId].hpbar.Visible = false
     end
@@ -343,8 +337,9 @@ local init = function()
     elseif (e.Data.Type == LogTextType.Magic) then
       local test = Regex.Match(e.Data.Text,
         "^(?:(?:Sneak attack! )(?:Critical hit! )?You (?:hit|mangle|slash|cut|scratch|gore|impale|stab|nick|crush|smash|bash|graze|incinerate|burn|scorch|singe|freeze|frost|chill|numb|dissolve|corrode|sear|blister|blast|jolt|shock|spark) (.*?) for ([\\d,]+) points with |With .*? you drain ([\\d+,]+) points of health from (.*).$)")
-      mobName = test.Groups[1].Value ~= "" and test.Groups[1].Value or test.Groups[4].Value ~= "" and test.Groups[4].Value or
-      nil
+      mobName = test.Groups[1].Value ~= "" and test.Groups[1].Value or
+          test.Groups[4].Value ~= "" and test.Groups[4].Value or
+          nil
       damage = test.Groups[2].Value ~= "" and test.Groups[2].Value or test.Groups[3].Value
     end
 
@@ -369,10 +364,10 @@ local init = function()
       local totalHp = math.floor(bestGuess.hp * tonumber(damage) / bestGuess.dmgPercent + 0.5)
       local maxHp = math.floor(tonumber(damage) / bestGuess.dmgPercent + 0.5)
       --print(tostring(totalHp) .. " / " .. tostring(maxHp) ..  "| ".. (totalHp/maxHp) .. ": " .. bestGuess.hp)
-      if (totalHp / maxHp) <= bestGuess.hp and maxHp>0 then
+      if (totalHp / maxHp) <= bestGuess.hp and maxHp > 0 then
         bestGuess.maxHp = maxHp
       end
-      
+
       bestGuess.lastUpdate = nil
     end
     ---@diagnostic enable:undefined-field
@@ -395,53 +390,59 @@ local init = function()
     end
   end)
 
+  local myPosition = acclient.Coordinates.Me
+
   -- Function to update position of health bars when the character's position changes
   local function positionChanged(e)
-    for _, wobject in pairs(wobjects_hp) do
-      ---@diagnostic disable
-      local coords = nil
-      if game.World.Exists(wobject.id) then coords=acclient.Movement.GetPhysicsCoordinates(wobject.id) end
-      if ((coords and acclient.Coordinates.Me.DistanceTo(coords)>(config.maxDistanceForVisibility or math.huge)) or
-         (game.World.Selected and game.World.Selected.Id==wobject.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp)) then
-        wobject.hpbar.Visible=false
-        wobject.redbar.Visible=false
-      elseif wobject.hp~=0 then
-        wobject:anchorHpBar()
-        wobject.hpbar.Visible=true
-        wobject.redbar.Visible=true
+    if myPosition.DistanceTo(acclient.Coordinates.Me) > 0.01 then
+      myPosition = acclient.Coordinates.Me
+      for _, wobject in pairs(wobjects_hp) do
+        ---@diagnostic disable
+        local coords = nil
+        if game.World.Exists(wobject.id) then
+          coords = acclient.Movement.GetPhysicsCoordinates(wobject.id)
+        end
+        if ((coords and acclient.Coordinates.Me.DistanceTo(coords) > (config.maxDistanceForVisibility or math.huge)) or
+              (game.World.Selected and game.World.Selected.Id == wobject.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp)) then
+          wobject.hpbar.Visible = false
+          wobject.redbar.Visible = false
+        elseif wobject.hp ~= 0 then
+          wobject:anchorHpBar()
+          wobject.hpbar.Visible = true
+          wobject.redbar.Visible = true
+        end
+        ---@diagnostic enable
       end
-      ---@diagnostic enable
     end
   end
 
   -- Insert initial objects that pass the filter
-  for i, wobject in ipairs(game.World.GetAll(function(weenie) return filter:check(weenie) end)) do
+  for i, wobject in ipairs(game.World.GetLandscape(function(weenie) return filter:check(weenie) end)) do
     wobjects_hp:insert({ id = wobject.Id, hp = 1 })
   end
 
   -- Add listener for when the character's position changes
-  game.Character.Weenie.OnPositionChanged.Add(positionChanged)
+  game.OnRender2D.Add(positionChanged)
 
   game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
-    local wobjectId=e.Data.ObjectId
-    local creatureProfile=e.Data.CreatureProfile
+    local wobjectId = e.Data.ObjectId
+    local creatureProfile = e.Data.CreatureProfile
     if wobjects_hp[wobjectId] and creatureProfile and creatureProfile.Health and creatureProfile.HealthMax then
-      wobjects_hp[wobjectId].hp=creatureProfile.Health / creatureProfile.HealthMax
+      wobjects_hp[wobjectId].hp = creatureProfile.Health / creatureProfile.HealthMax
     end
   end)
-  
+
   game.OnTick.Add(function()
     ---@diagnostic disable: undefined-field
     for _, wobject in pairs(wobjects_hp or {}) do
-      
-      if wobject.objectClass==ObjectClass.Player and wobject.hp~=1 then
+      if wobject.objectClass == ObjectClass.Player and wobject.hp ~= 1 then
         game.Actions.ObjectAppraise(wobject.id)
       end
       ---@diagnostic enable: undefined-field
     end
   end)
-----------------------------------------
---- Settings Saving/Loading
+  ----------------------------------------
+  --- Settings Saving/Loading
   ----------------------------------------
 
   -- Load settings from a JSON file
@@ -452,13 +453,12 @@ local init = function()
       local settings = json.parse(content)
       if settings and settings[game.ServerName] and settings[game.ServerName][game.Character.Weenie.Name] then
         local characterSettings = settings[game.ServerName][game.Character.Weenie.Name]
-        
+
         if characterSettings then
           targetPosition = Vector2.new(characterSettings.targetPosition.X, characterSettings.targetPosition.Y)
           targetSize = Vector2.new(characterSettings.targetSize.X, characterSettings.targetSize.Y)
         end
         targetHide = characterSettings and characterSettings.targetHide or false
-      
       end
     end
   end
@@ -528,7 +528,7 @@ end
 game.OnStateChanged.Add(function(state)
   if state.NewState == ClientState.In_Game then
     init()
-  elseif targetHud~=nil then
+  elseif targetHud ~= nil then
     targetHud.Dispose()
   end
 end)
