@@ -1320,15 +1320,19 @@ bars({
     showGear = function(bar)
       local style = ImGui.GetStyle()
       local miscPadding = style.CellPadding + style.FramePadding + style.ItemSpacing + style.WindowPadding
+      
       for _, profile in ipairs(bar.profiles) do
         if profile.name == bar.profileName then
           if not profile.gear then
             bar:resetRemembered()
           else
             bar.rememberedSlots = profile.gear
+            local count=0
+            bar.dontSave = bar.dontSave or bar.shallowcopy(profile.gear)
           end
         end
       end
+
       local windowPos = ImGui.GetWindowPos()
       local shiftStart = { 5, 1, 1, 2, 5, 5 }
       local contentSpace = ImGui.GetContentRegionAvail() -
@@ -1362,7 +1366,7 @@ bars({
             ImGui.SetCursorScreenPos(start)
             DrawIcon(bar, bar.GetItemTypeUnderlay(slottedItem), cellSize, function()
               if bar.rememberedSlots[slot] == slottedItem.Id then
-                if not (string.find(slot, "Ring") and string.find(slot, "Bracelet")) then
+                if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon")) then
                   for i, eqslot in ipairs(bar.equipMask) do
                     if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
                       bar.rememberedSlots[eqslot] = nil
@@ -1372,7 +1376,7 @@ bars({
                   bar.rememberedSlots[slot] = nil
                 end
               else
-                if not (string.find(slot, "Ring") and string.find(slot, "Bracelet")) then
+                if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon")) then
                   for i, eqslot in ipairs(bar.equipMask) do
                     if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
                       bar.rememberedSlots[eqslot] = slottedItem.Id
@@ -1439,6 +1443,12 @@ bars({
       end
       ImGui.SameLine()
       if ImGui.Button("Don't Save", Vector2.new(ImGui.GetWindowWidth() / 3 - miscPadding.X, ImGui.GetTextLineHeight()) + miscPadding) then
+        for _, profile in ipairs(bar.profiles) do
+          if profile.name == bar.profileName then
+            profile.gear=bar.dontSave
+          end
+        end
+        bar.dontSave=nil
         bar:resetRemembered()
         bar.imguiReset = true
         bar.renderContext = "showProfilesCtx"
@@ -1525,7 +1535,7 @@ bars({
                 local slotMask = EquipMask[slot]
                 local wieldedItem = bar.slots[slot]
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
-                  if not (string.find(slot, "Ring") and string.find(slot, "Bracelet")) then
+                  if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon")) then
                     for i, eqslot in ipairs(bar.equipMask) do
                       if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
                         if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id ~= profileEquipment.Id then
