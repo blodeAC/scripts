@@ -1,4 +1,5 @@
 local _imgui = require("imgui")
+local ImGui = _imgui.ImGui
 local vitals = game.Character.Weenie.Vitals
 local acclient = require("acclient")
 
@@ -1996,5 +1997,4 @@ bars({
     end
   },
 })
-
 return bars
