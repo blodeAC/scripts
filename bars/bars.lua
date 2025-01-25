@@ -1366,7 +1366,7 @@ bars({
             ImGui.SetCursorScreenPos(start)
             DrawIcon(bar, bar.GetItemTypeUnderlay(slottedItem), cellSize, function()
               if bar.rememberedSlots[slot] == slottedItem.Id then
-                if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon")) then
+                if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
                     if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
                       bar.rememberedSlots[eqslot] = nil
@@ -1376,7 +1376,7 @@ bars({
                   bar.rememberedSlots[slot] = nil
                 end
               else
-                if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon")) then
+                if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
                     if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
                       bar.rememberedSlots[eqslot] = slottedItem.Id
@@ -1535,7 +1535,7 @@ bars({
                 local slotMask = EquipMask[slot]
                 local wieldedItem = bar.slots[slot]
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
-                  if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon")) then
+                  if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                     for i, eqslot in ipairs(bar.equipMask) do
                       if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
                         if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id ~= profileEquipment.Id then
