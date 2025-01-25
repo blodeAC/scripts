@@ -39,7 +39,7 @@ end
 
 -- FUNCTIONS USED BY BARS
 local function sortbag(bar, inscription, containerHolder, func)
-  if bar.sortBag == nil or game.World.Exists(bar.sortBag) == nil then
+  if bar.sortBag == nil or game.World.Exists(bar.sortBag) == false then
     for _, bag in ipairs(containerHolder.Containers) do
       game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
         if bag.Id == e.Data.ObjectId then
@@ -84,9 +84,9 @@ local function renderEvent(bar)                                                 
 
       -- Scale font based on value relative to the average
       if not entry.scale then
-        entry.scale = string.sub(entry.text, -1) == "!" and entry.fontScaleCrit_num or
-            math.min(math.max((entry.value or average) / average, bar.settings.fontScaleMin_num), bar.settings
-              .fontScaleMax_num)
+        entry.scale = string.sub(entry.text, -1) == "!" and entry.fontScaleCrit_flt or
+            math.min(math.max((entry.value or average) / average, bar.settings.fontScaleMin_flt), bar.settings
+              .fontScaleMax_flt)
       end
       ImGui.SetWindowFontScale(entry.scale)
 
@@ -425,10 +425,12 @@ bars({
     type = "text",
     settings = {
       enabled = false,
-      fontScale_num = 1.5,
+      fontScale_flt = 1.5,
       icon_hex = 0x060064E5,
       minDistance_num = 35,
+      minDistance_col4 = 0xFF00FF00,
       range1_num = 50,
+      range1_col4 = 0xFFFFFFFF,
       maxDistance_num = 60,
     },
     windowSettings = _imgui.ImGuiWindowFlags.NoInputs + _imgui.ImGuiWindowFlags.NoBackground,
@@ -436,22 +438,28 @@ bars({
       { _imgui.ImGuiCol.Text, function(bar)
         local dist = tonumber(bar:text())
         if not dist then
-          return 0xFFFFFFFF -- doesn't matter but need to return something
-        elseif dist > bar.settings.maxDistance then
-          return 0xFFFFFFFF --AABBGGRR, so white
-        elseif dist > bar.settings.range1 then
-          return 0xFFFFFFFF
-        elseif dist > bar.settings.minDistance then
-          return 0xFF00FF00 --AABBGGRR, so red
+          return 0xFFFFFFFF -- will not show
+        elseif dist > (bar.settings.maxDistance_num or 9999) then
+          return 0xFFFFFFFF -- will not show
+        elseif dist > (bar.settings.range1_num or 9999) then
+          return bar.settings.range1_col4 
+        elseif dist >= (bar.settings.minDistance_num or 0) then
+          return bar.settings.minDistance_col4 --AABBGGRR, so red
         else
-          return 0xFFFFFFFF --doesn't matter but need to return something
+          return 0xFFFFFFFF -- doesn't matter but need to return something
         end
       end }
     },
     text = function(bar)
       if game.World.Selected == nil or game.World.Selected.ObjectClass ~= ObjectClass.Monster then return "" end
       local dist = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))
-      return dist > bar.settings.minDistance and dist < bar.settings.maxDistance and string.format("%.0f", dist) or ""
+      if not bar.settings.minDistance_num then
+        bar.settings.minDistance_num=0
+      end
+      if not bar.settings.maxDistance_num then
+        bar.settings.maxDistance_num=9999
+      end
+      return dist > bar.settings.minDistance_num and dist < bar.settings.maxDistance_num and string.format("%.0f", dist) or ""
     end
   },
   {
@@ -644,10 +652,11 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x06006084,
+      attackBar_pct = {0.51,0.01,1}
     },
-    text = function() return "AP=0.51" end,
-    func = function()
-      game.Actions.InvokeChat("/vt setattackbar 0.51")
+    text = function(bar) return "AP=0.51" end,
+    func = function(bar)
+      game.Actions.InvokeChat("/vt setattackbar " .. bar.settings.attackBar_pct[1])
     end
   },
   {
@@ -702,9 +711,9 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x060028FC,
-      fontScaleMin_num = 2,
-      fontScaleMax_num = 3,
-      fontScaleCrit_num = 4,
+      fontScaleMin_flt = 2,
+      fontScaleMax_flt = 3,
+      fontScaleCrit_flt = 4,
       fontColorPositive_col3 = 0xFFFFFF,
       fontColorNegative_col3 = 0x0000FF,
       fadeDuration_num = 2, -- How long the text stays on screen
@@ -790,8 +799,8 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x060028FD,
-      fontScaleMin_num = 2,
-      fontScaleMax_num = 3,
+      fontScaleMin_flt = 2,
+      fontScaleMax_flt = 3,
       fontColorPositive_col3 = 0x00FF00,
       fontColorNegative_col3 = 0x0000FF,
       fadeDuration_num = 2, -- How long the text stays on screen
@@ -997,11 +1006,82 @@ bars({
     name = "BlueAetheria", --important, must be correctly capitalized for enum to work
     settings = {
       enabled = false,
-      fontScale_num = 2
+      icon_hex = 0x0600679F,
+      fontScale_flt = 2,
     },
     init = function(bar)
       if game.ServerName ~= "Daralet" then
-        print("BlueAetheria disabled due to unusability when not on Daralet")
+        print(bar.name .. " disabled due to unusability when not on Daralet")
+        bar.render = function() end
+        return
+      end
+      local function scan()
+        for _, item in ipairs(game.Character.Equipment) do
+          bar.id = nil
+          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
+            bar.id = item.Id
+            break
+          end
+        end
+      end
+      scan()
+      ---@param cooldownChanged SharedCooldownsChangedEventArgs
+      game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
+        if bar.id and cooldownChanged.Cooldown.ObjectId == bar.id then
+          bar.cooldown = cooldownChanged.Cooldown.ExpiresAt
+        end
+      end)
+      game.Messages.Incoming.Qualities_UpdateInstanceID.Add(function(updateInstance)
+        local objectId = updateInstance.Data.ObjectId
+        local weenie = game.World.Get(objectId)
+        if not weenie or weenie.Value(IntId.ValidLocations) ~= EquipMask[bar.name] then
+          return
+        elseif updateInstance.Data.Key == InstanceId.Container and updateInstance.Data.Value == game.CharacterId then
+          sleep(333)
+          scan()
+        elseif (updateInstance.Data.Key == InstanceId.Wielder and updateInstance.Data.Value == 0) then
+          sleep(333)
+          scan()
+        end
+      end)
+    end,
+    render = function(bar)
+      if bar.id and game.World.Exists(bar.id) then
+        if bar.cooldown then
+          local rem =  (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          if rem > 0 then
+            bar.settings.label_str = string.format("%.1f", rem)
+          else
+            bar.cooldown = nil
+            bar.settings.label_str = nil
+          end
+        end
+        local aetheria = game.World.Get(bar.id)
+        local underlay = aetheria.Value(DataId.IconUnderlay)
+        if underlay ~= 0 then
+          local cursorPos=ImGui.GetCursorScreenPos()
+          DrawIcon(bar,underlay)
+          ImGui.SetCursorScreenPos(cursorPos)
+        end
+        local icon = aetheria.Value(DataId.Icon)
+        DrawIcon(bar, icon)
+      else
+        if not DrawIcon(bar, 0x06006C0A) then
+          ImGui.Text("Missing\nTexture!")
+        end
+      end
+    end,
+  },
+  {
+    name = "YellowAetheria", --important, must be correctly capitalized for enum to work
+    settings = {
+      enabled = false,
+      icon_hex = 0x060067A2,
+      fontScale_flt = 2
+    },
+    init = function(bar)
+      if game.ServerName ~= "Daralet" then
+        print(bar.name .. " disabled due to unusability when not on Daralet")
         bar.render = function() end
         return
       end
@@ -1037,15 +1117,21 @@ bars({
     render = function(bar)
       if bar.id and game.World.Exists(bar.id) then
         if bar.cooldown then
-          local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          local rem =  (bar.cooldown - DateTime.UtcNow).TotalSeconds
           if rem > 0 then
-            bar.label = string.format("%.1f", rem)
+            bar.settings.label_str = string.format("%.1f", rem)
           else
             bar.cooldown = nil
-            bar.label = nil
+            bar.settings.label_str = nil
           end
         end
         local aetheria = game.World.Get(bar.id)
+        local underlay = aetheria.Value(DataId.IconUnderlay)
+        if underlay ~= 0 then
+          local cursorPos=ImGui.GetCursorScreenPos()
+          DrawIcon(bar,underlay)
+          ImGui.SetCursorScreenPos(cursorPos)
+        end
         local icon = aetheria.Value(DataId.Icon)
         DrawIcon(bar, icon)
       else
@@ -1056,7 +1142,8 @@ bars({
   {
     name = "equipmentManager",
     settings = {
-      enabled = false
+      enabled = false,
+      icon_hex = 0x060018FA,
     },
     styleVar = {
       { _imgui.ImGuiStyleVar.FramePadding, Vector2.new(2, 2) },
@@ -1452,19 +1539,10 @@ bars({
     settings = {
       enabled = false,
       showItemBuffs = false,
-      reverseSort = false
+      reverseSort = false,
+      sortingOptions_combo = {1, "Name", "Id", "Category", "StatModType", "ExpiresAt", "Level", "Power"}
     },
     init = function(bar)
-      bar.sortOption = 0
-      bar.sortingOptions = {
-        "Name",
-        "Id",
-        "Category",
-        "StatModType",
-        "ExpiresAt",
-        "Level",
-        "Power"
-      }
       function bar.formatSeconds(seconds)
         local hours = math.floor(seconds / 3600)
         local minutes = math.floor((seconds % 3600) / 60)
@@ -1568,10 +1646,10 @@ bars({
         end
       end
 
-      local sortKey = bar.sortingOptions[bar.sortOption + 1]
+      local sortKey = bar.settings.sortingOptions_combo[bar.settings.sortingOptions_combo[1]+1]
       for i, buffsOrDebuffs in pairs(activeSpells) do
         table.sort(buffsOrDebuffs, function(a, b)
-          if bar.reverseSort then
+          if bar.settings.reverseSort then
             return a[sortKey] > b[sortKey]
           else
             return a[sortKey] < b[sortKey]
@@ -1580,6 +1658,8 @@ bars({
       end
 
       local checkboxSize = Vector2.new(24, 24)
+      local windowSize = ImGui.GetWindowSize()
+      local windowPos = ImGui.GetWindowPos()
       local reservedHeight = checkboxSize.Y + ImGui.GetStyle().ChildBorderSize * 2
 
       -- Calculate the available space for the table
@@ -1645,7 +1725,7 @@ bars({
                 cursorStartDurationText + durationTextSize + Vector2.new(3, 0), 0xAA000000)
               ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos() - Vector2.new(0, expiryTimerYAdjust))
               ImGui.Text(bar.formatSeconds(expiryTimer))
-              ImGui.SetWindowFontScale(bar.settings.fontScale_num or 1)
+              ImGui.SetWindowFontScale(bar.settings.fontScale_flt or 1)
             end
 
             local cursorPostIcon = cursorStart + Vector2.new(iconSize.X, 0)
@@ -1676,63 +1756,41 @@ bars({
         ImGui.EndTable()
       end
 
-      local cursorForCheckbox = ImGui.GetCursorScreenPos()
-      local function checkbox(label, setting, plusOrMinus)
-        -- Get the position and size for the checkbox
-        local cursor = ImGui.GetCursorScreenPos()
+      local spacingBetweenLabelX=5
+      ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing,Vector2.new(spacingBetweenLabelX,0))
+      
+      ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()+Vector2.new(spacingBetweenLabelX,3))
 
-        -- Calculate the bounding box for the checkbox
-        local mouse = ImGui.GetMousePos()
-        local isHovered = mouse.X >= cursor.X and mouse.X <= cursor.X + checkboxSize.X and
-            mouse.Y >= cursor.Y and mouse.Y <= cursor.Y + checkboxSize.Y
-
-        -- Handle input
-        if isHovered and ImGui.IsMouseClicked(0) then
-          bar[setting] = not bar[setting]
-        end
-
-        local drawlist = ImGui.GetWindowDrawList()
-        -- Draw the checkbox
-        ImGui.InvisibleButton("##checkbox" .. setting, checkboxSize)
-
-        if plusOrMinus then
-          drawlist.AddLine(cursor + Vector2.new(3, checkboxSize.Y / 2),
-            cursor + Vector2.new(checkboxSize.X - 3, checkboxSize.Y / 2), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
-          if not bar[setting] then
-            drawlist.AddLine(cursor + Vector2.new(checkboxSize.X / 2, 3),
-              cursor + Vector2.new(checkboxSize.X / 2, checkboxSize.Y - 3), ImGui.GetColorU32(_imgui.ImGuiCol.Text))
-          end
-        elseif bar[setting] then
-          drawlist.AddRectFilled(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.CheckMark))
-        else
-          drawlist.AddRect(cursor, cursor + checkboxSize, ImGui.GetColorU32(_imgui.ImGuiCol.Border))
-        end
-
-
-        ImGui.SetCursorScreenPos(Vector2.new(cursorForCheckbox.X + checkboxSize.X + 5,
-          cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2))
-        ImGui.Text(label)
-
-        return bar[setting]
-      end
-      if checkbox("Show Item Buffs", "showItemBuffs") then end
-
-      local cursorForOptions = Vector2.new(ImGui.GetWindowPos().X + ImGui.GetWindowWidth() / 2 + 5,
-        cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2)
-      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X - checkboxSize.X,
-        cursorForCheckbox.Y + checkboxSize.Y / 2 - ImGui.GetFontSize() / 2))
-      ImGui.Text("Sort by: ")
-      ImGui.SameLine()
-      ImGui.SetCursorScreenPos(Vector2.new(cursorForOptions.X + checkboxSize.X - 5, cursorForCheckbox.Y))
-
-      if checkbox("", "reverseSort", true) then end
-      ImGui.SameLine()
-      ImGui.SetNextItemWidth(-1)
-      ImGui.SetCursorScreenPos(cursorForOptions + Vector2.new(checkboxSize.X * 2, 0))
-      local changed, newIndex = ImGui.Combo("##sortOption", bar.sortOption, bar.sortingOptions, #bar.sortingOptions)
+      local changed, checked = ImGui.Checkbox("Show Item Buffs     ##" .. bar.name, bar.settings.showItemBuffs)
       if changed then
-        bar.sortOption = newIndex
+        bar.settings.showItemBuffs = checked
       end
+
+      ImGui.SameLine()
+      ImGui.Text("Sort by ")
+      
+      ImGui.SameLine()
+      ImGui.SetNextItemWidth(100)
+
+      ---@diagnostic disable-next-line
+      local sortOptions = { unpack(bar.settings.sortingOptions_combo,2,#bar.settings.sortingOptions_combo) }
+      local sortIndex = bar.settings.sortingOptions_combo[1]-1
+      local changed2, newIndex = ImGui.Combo("##sortOption", sortIndex, sortOptions, #bar.settings.sortingOptions_combo - 1 )
+      if changed2 then
+        bar.settings.sortingOptions_combo[1] = newIndex+1
+        SaveBarSettings(bar,"settings.sortingOptions_combo",bar.settings.sortingOptions_combo)
+      end
+
+      ImGui.SameLine()
+      ImGui.Text("     Desc ")
+
+      ImGui.SameLine()
+      local changed3, checked3 = ImGui.Checkbox("##" .. bar.name .. "_reverseSort", bar.settings.reverseSort)
+      if changed3 then
+        bar.settings.reverseSort = checked3
+      end
+
+      ImGui.PopStyleVar()
     end
   },
   {
