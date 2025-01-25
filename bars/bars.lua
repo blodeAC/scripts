@@ -1236,7 +1236,7 @@ bars({
       table.insert(bar.equipMask, 22, "None")
       table.insert(bar.equipMask, 23, "RightBracelet")
       table.insert(bar.equipMask, 24, "RightRing")
-      table.insert(bar.equipMask, 25, "MeleeWeapon")
+      table.insert(bar.equipMask, 25, "Wand")
       table.insert(bar.equipMask, 26, "RedAetheria")
       table.insert(bar.equipMask, 27, "None") --?
       table.insert(bar.equipMask, 28, "ChestUnderwear")
@@ -1256,6 +1256,14 @@ bars({
             if slot ~= "None" and equipment.CurrentWieldedLocation + EquipMask[slot] == equipment.CurrentWieldedLocation then
               bar.slots[slot] = equipment
               filledSlots[i] = "FILLED"
+            elseif i==25 then
+              if equipment.CurrentWieldedLocation + EquipMask["MeleeWeapon"] == equipment.CurrentWieldedLocation then
+                bar.slots["MeleeWeapon"] = equipment
+                filledSlots[i] = "FILLED"
+              elseif equipment.CurrentWieldedLocation + EquipMask["MissileWeapon"] == equipment.CurrentWieldedLocation then
+                bar.slots["MissileWeapon"] = equipment
+                filledSlots[i] = "FILLED"
+              end
             end
           end
         end
@@ -1333,6 +1341,13 @@ bars({
           local startY = windowPos.Y + (y - 1) * cellSize.Y + (y >= shiftStart[x] and cellSize.Y / 2 or 0)
           local start = Vector2.new(startX, startY)
           local slot = bar.equipMask[index]
+          if index==25 and bar.slots[slot]==nil then
+            if bar.slots["MeleeWeapon"]~=nil then
+              slot = "MeleeWeapon"
+            elseif bar.slots["MissileWeapon"]~=nil then
+              slot = "MissileWeapon"
+            end
+          end
           if slot ~= "None" then
             drawlist.AddRect(start, start + cellSize, 0xFFFFFFFF)
           end
