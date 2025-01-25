@@ -1490,7 +1490,7 @@ bars({
                   if not (string.find(slot,"Ring") and string.find(slot,"Bracelet")) then
                     for i,eqslot in ipairs(bar.equipMask) do
                       if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
-                        if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot]~=profileEquipment.Id then
+                        if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id~=profileEquipment.Id then
                           game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId,0,false, stagger(count, equipmentActionOpts),
                             genericActionCallback)
                           count=count+1
