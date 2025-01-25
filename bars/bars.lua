@@ -1472,6 +1472,7 @@ bars({
           break
         end
       end
+      
       for _, profile in ipairs(bar.profiles) do
         local screenPos = ImGui.GetCursorScreenPos()
         if ImGui.Button(profile.name .. "##profile" .. tostring(_), Vector2.new(windowSize.X, ImGui.GetTextLineHeight()) + miscPadding) then
@@ -1485,6 +1486,19 @@ bars({
                 local slotMask = EquipMask[slot]
                 local wieldedItem = bar.slots[slot]
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
+                  
+                  if not (string.find(slot,"Ring") and string.find(slot,"Bracelet")) then
+                    for i,eqslot in ipairs(bar.equipMask) do
+                      if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
+                        if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot]~=profileEquipment.Id then
+                          game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId,0,false, stagger(count, equipmentActionOpts),
+                            genericActionCallback)
+                          count=count+1
+                        end
+                      end
+                    end
+                  end
+                 
                   game.Actions.ObjectMove(profileEquipment.Id, game.CharacterId, 0, false, stagger(count),
                     function(objectMove)
                       if not objectMove.Success and objectMove.Error ~= ActionError.ItemAlreadyWielded then
