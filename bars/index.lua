@@ -1,5 +1,5 @@
 ﻿local _imgui = require("imgui")
-ImGui = _imgui.ImGui
+local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
@@ -33,7 +33,7 @@ function DrawIcon(bar, overrideId, size, func)
 
   if overrideId then
     if ImGui.TextureButton("##" .. bar_position .. overrideId, texture, size) then
-      func()
+      if func then func() end
     end
   elseif ImGui.TextureButton("##" .. bar_position, GetOrCreateTexture(bar.settings.icon_hex), size) then
     bar:func()
@@ -456,7 +456,7 @@ local function renderBars(bar)
     for settingName, setting in pairs(bar.settings) do
       ImGui.Text(settingName)
       ImGui.SameLine()
-      --ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowPos().X+5,ImGui.GetCursorPosY()))
+      --ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowPos().X+bar.settingX+5,ImGui.GetCursorPosY()))
       local settingType = settingName:match(".*_(.*)$")
 
       if settingType == nil then
