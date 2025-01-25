@@ -220,7 +220,7 @@ local function renderBuffs(bar)
 
     local reservedPerIconX = iconSize.X + bufferRect_vec2.X + bar.settings.iconSpacing_num
     local reservedPerIconY = iconSize.Y + bufferRect_vec2.Y + bar.settings.iconSpacing_num +
-    ImGui.GetTextLineHeight() * 1.5
+        ImGui.GetTextLineHeight() * 1.5
     if bar.settings.growAxis_str == "X" then
       if not bar.settings.growReverse then
         cursorStartX = windowPos.X + (i - 1) * reservedPerIconX
@@ -442,11 +442,11 @@ bars({
         elseif dist > (bar.settings.maxDistance_num or 9999) then
           return 0xFFFFFFFF -- will not show
         elseif dist > (bar.settings.range1_num or 9999) then
-          return bar.settings.range1_col4 
+          return bar.settings.range1_col4
         elseif dist >= (bar.settings.minDistance_num or 0) then
           return bar.settings.minDistance_col4 --AABBGGRR, so red
         else
-          return 0xFFFFFFFF -- doesn't matter but need to return something
+          return 0xFFFFFFFF                    -- doesn't matter but need to return something
         end
       end }
     },
@@ -454,12 +454,13 @@ bars({
       if game.World.Selected == nil or game.World.Selected.ObjectClass ~= ObjectClass.Monster then return "" end
       local dist = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))
       if not bar.settings.minDistance_num then
-        bar.settings.minDistance_num=0
+        bar.settings.minDistance_num = 0
       end
       if not bar.settings.maxDistance_num then
-        bar.settings.maxDistance_num=9999
+        bar.settings.maxDistance_num = 9999
       end
-      return dist > bar.settings.minDistance_num and dist < bar.settings.maxDistance_num and string.format("%.0f", dist) or ""
+      return dist > bar.settings.minDistance_num and dist < bar.settings.maxDistance_num and string.format("%.0f", dist) or
+      ""
     end
   },
   {
@@ -652,7 +653,7 @@ bars({
     settings = {
       enabled = false,
       icon_hex = 0x06006084,
-      attackBar_pct = {0.51,0.01,1}
+      attackBar_pct = { 0.51, 0.01, 1 }
     },
     text = function(bar) return "AP=0.51" end,
     func = function(bar)
@@ -1048,7 +1049,7 @@ bars({
     render = function(bar)
       if bar.id and game.World.Exists(bar.id) then
         if bar.cooldown then
-          local rem =  (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
           if rem > 0 then
             bar.settings.label_str = string.format("%.1f", rem)
           else
@@ -1059,8 +1060,8 @@ bars({
         local aetheria = game.World.Get(bar.id)
         local underlay = aetheria.Value(DataId.IconUnderlay)
         if underlay ~= 0 then
-          local cursorPos=ImGui.GetCursorScreenPos()
-          DrawIcon(bar,underlay)
+          local cursorPos = ImGui.GetCursorScreenPos()
+          DrawIcon(bar, underlay)
           ImGui.SetCursorScreenPos(cursorPos)
         end
         local icon = aetheria.Value(DataId.Icon)
@@ -1117,7 +1118,7 @@ bars({
     render = function(bar)
       if bar.id and game.World.Exists(bar.id) then
         if bar.cooldown then
-          local rem =  (bar.cooldown - DateTime.UtcNow).TotalSeconds
+          local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
           if rem > 0 then
             bar.settings.label_str = string.format("%.1f", rem)
           else
@@ -1128,8 +1129,8 @@ bars({
         local aetheria = game.World.Get(bar.id)
         local underlay = aetheria.Value(DataId.IconUnderlay)
         if underlay ~= 0 then
-          local cursorPos=ImGui.GetCursorScreenPos()
-          DrawIcon(bar,underlay)
+          local cursorPos = ImGui.GetCursorScreenPos()
+          DrawIcon(bar, underlay)
           ImGui.SetCursorScreenPos(cursorPos)
         end
         local icon = aetheria.Value(DataId.Icon)
@@ -1256,7 +1257,7 @@ bars({
             if slot ~= "None" and equipment.CurrentWieldedLocation + EquipMask[slot] == equipment.CurrentWieldedLocation then
               bar.slots[slot] = equipment
               filledSlots[i] = "FILLED"
-            elseif i==25 then
+            elseif i == 25 then
               if equipment.CurrentWieldedLocation + EquipMask["MeleeWeapon"] == equipment.CurrentWieldedLocation then
                 bar.slots["MeleeWeapon"] = equipment
                 filledSlots[i] = "FILLED"
@@ -1341,10 +1342,10 @@ bars({
           local startY = windowPos.Y + (y - 1) * cellSize.Y + (y >= shiftStart[x] and cellSize.Y / 2 or 0)
           local start = Vector2.new(startX, startY)
           local slot = bar.equipMask[index]
-          if index==25 and bar.slots[slot]==nil then
-            if bar.slots["MeleeWeapon"]~=nil then
+          if index == 25 and bar.slots[slot] == nil then
+            if bar.slots["MeleeWeapon"] ~= nil then
               slot = "MeleeWeapon"
-            elseif bar.slots["MissileWeapon"]~=nil then
+            elseif bar.slots["MissileWeapon"] ~= nil then
               slot = "MissileWeapon"
             end
           end
@@ -1353,21 +1354,44 @@ bars({
           end
           drawlist.AddRectFilled(start, start + cellSize, 0x88000000)
 
-          local slottedItem = bar.slots[slot]
+          local slottedItem = bar.slots[slot] or
+            (slot == "MeleeWeapon" and (bar.slots["Wand"] or bar.slots["MissileWeapon"])) or
+            (slot == "MissleWeapon" and (bar.slots["Wand"] or bar.slots["MeleeWeapon"]))
+          
           if slottedItem and slottedItem ~= slot then
             ImGui.SetCursorScreenPos(start)
             DrawIcon(bar, bar.GetItemTypeUnderlay(slottedItem), cellSize, function()
-              if table.contains(bar.rememberedSlots, slottedItem.Id) then
-                bar.rememberedSlots[slot] = nil
+              if bar.rememberedSlots[slot] == slottedItem.Id then
+                if not (string.find(slot, "Ring") and string.find(slot, "Bracelet")) then
+                  for i, eqslot in ipairs(bar.equipMask) do
+                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
+                      bar.rememberedSlots[eqslot] = nil
+                    end
+                  end
+                else
+                  bar.rememberedSlots[slot] = nil
+                end
               else
-                bar.rememberedSlots[slot] = slottedItem.Id
+                if not (string.find(slot, "Ring") and string.find(slot, "Bracelet")) then
+                  for i, eqslot in ipairs(bar.equipMask) do
+                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
+                      bar.rememberedSlots[eqslot] = slottedItem.Id
+                    end
+                  end
+                else
+                  bar.rememberedSlots[slot] = slottedItem.Id
+                end
               end
             end)
             ImGui.SetCursorScreenPos(start)
             DrawIcon(bar, bar.slots[slot].Value(DataId.Icon), cellSize)
-            if table.contains(bar.rememberedSlots, slottedItem.Id) then
+            if bar.rememberedSlots[slot] == slottedItem.Id then
               drawlist.AddRectFilled(start, start + cellSize, 0x8800FF00)
-            elseif bar.rememberedSlots[slot] and slottedItem.Id ~= bar.rememberedSlots[slot] then
+            elseif (bar.rememberedSlots[slot] and slottedItem.Id ~= bar.rememberedSlots[slot]) or
+                (({ Wand = true, MissileWeapon = true, MeleeWeapon = true })[slot] and 
+                ((bar.rememberedSlots["Wand"] and bar.rememberedSlots["Wand"] ~= slottedItem.Id) or 
+                (bar.rememberedSlots["MeleeWeapon"] and bar.rememberedSlots["MeleeWeapon"] ~= slottedItem.Id) or 
+                (bar.rememberedSlots["MissileWeapon"] and bar.rememberedSlots["MissileWeapon"] ~= slottedItem.Id))) then
               drawlist.AddRectFilled(start, start + cellSize, 0x880000FF)
             end
           elseif bar.rememberedSlots[slot] and bar.rememberedSlots[slot] ~= slot then
@@ -1487,7 +1511,7 @@ bars({
           break
         end
       end
-      
+
       for _, profile in ipairs(bar.profiles) do
         local screenPos = ImGui.GetCursorScreenPos()
         if ImGui.Button(profile.name .. "##profile" .. tostring(_), Vector2.new(windowSize.X, ImGui.GetTextLineHeight()) + miscPadding) then
@@ -1501,19 +1525,19 @@ bars({
                 local slotMask = EquipMask[slot]
                 local wieldedItem = bar.slots[slot]
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
-                  
-                  if not (string.find(slot,"Ring") and string.find(slot,"Bracelet")) then
-                    for i,eqslot in ipairs(bar.equipMask) do
+                  if not (string.find(slot, "Ring") and string.find(slot, "Bracelet")) then
+                    for i, eqslot in ipairs(bar.equipMask) do
                       if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
-                        if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id~=profileEquipment.Id then
-                          game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId,0,false, stagger(count, equipmentActionOpts),
+                        if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id ~= profileEquipment.Id then
+                          game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId, 0, false,
+                            stagger(count, equipmentActionOpts),
                             genericActionCallback)
-                          count=count+1
+                          count = count + 1
                         end
                       end
                     end
                   end
-                 
+
                   game.Actions.ObjectMove(profileEquipment.Id, game.CharacterId, 0, false, stagger(count),
                     function(objectMove)
                       if not objectMove.Success and objectMove.Error ~= ActionError.ItemAlreadyWielded then
@@ -1569,7 +1593,7 @@ bars({
       enabled = false,
       showItemBuffs = false,
       reverseSort = false,
-      sortingOptions_combo = {1, "Name", "Id", "Category", "StatModType", "ExpiresAt", "Level", "Power"}
+      sortingOptions_combo = { 1, "Name", "Id", "Category", "StatModType", "ExpiresAt", "Level", "Power" }
     },
     init = function(bar)
       function bar.formatSeconds(seconds)
@@ -1675,7 +1699,7 @@ bars({
         end
       end
 
-      local sortKey = bar.settings.sortingOptions_combo[bar.settings.sortingOptions_combo[1]+1]
+      local sortKey = bar.settings.sortingOptions_combo[bar.settings.sortingOptions_combo[1] + 1]
       for i, buffsOrDebuffs in pairs(activeSpells) do
         table.sort(buffsOrDebuffs, function(a, b)
           if bar.settings.reverseSort then
@@ -1785,10 +1809,10 @@ bars({
         ImGui.EndTable()
       end
 
-      local spacingBetweenLabelX=5
-      ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing,Vector2.new(spacingBetweenLabelX,0))
-      
-      ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos()+Vector2.new(spacingBetweenLabelX,3))
+      local spacingBetweenLabelX = 5
+      ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, Vector2.new(spacingBetweenLabelX, 0))
+
+      ImGui.SetCursorScreenPos(ImGui.GetCursorScreenPos() + Vector2.new(spacingBetweenLabelX, 3))
 
       local changed, checked = ImGui.Checkbox("Show Item Buffs     ##" .. bar.name, bar.settings.showItemBuffs)
       if changed then
@@ -1797,17 +1821,18 @@ bars({
 
       ImGui.SameLine()
       ImGui.Text("Sort by ")
-      
+
       ImGui.SameLine()
       ImGui.SetNextItemWidth(100)
 
       ---@diagnostic disable-next-line
-      local sortOptions = { unpack(bar.settings.sortingOptions_combo,2,#bar.settings.sortingOptions_combo) }
-      local sortIndex = bar.settings.sortingOptions_combo[1]-1
-      local changed2, newIndex = ImGui.Combo("##sortOption", sortIndex, sortOptions, #bar.settings.sortingOptions_combo - 1 )
+      local sortOptions = { unpack(bar.settings.sortingOptions_combo, 2, #bar.settings.sortingOptions_combo) }
+      local sortIndex = bar.settings.sortingOptions_combo[1] - 1
+      local changed2, newIndex = ImGui.Combo("##sortOption", sortIndex, sortOptions,
+        #bar.settings.sortingOptions_combo - 1)
       if changed2 then
-        bar.settings.sortingOptions_combo[1] = newIndex+1
-        SaveBarSettings(bar,"settings.sortingOptions_combo",bar.settings.sortingOptions_combo)
+        bar.settings.sortingOptions_combo[1] = newIndex + 1
+        SaveBarSettings(bar, "settings.sortingOptions_combo", bar.settings.sortingOptions_combo)
       end
 
       ImGui.SameLine()
