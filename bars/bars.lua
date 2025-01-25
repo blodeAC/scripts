@@ -1435,6 +1435,7 @@ bars({
         table.insert(bar.profiles, profile)
         bar.activeProfile = profile
         SaveBarSettings(bar, "profiles", bar.profiles)
+        bar.dontSave=nil
         bar:resetRemembered()
         bar.imguiReset = true
         bar.renderContext = "showProfilesCtx"
@@ -1465,6 +1466,7 @@ bars({
         end
         bar.profiles = profilesCopy
         SaveBarSettings(bar, "profiles", bar.profiles)
+        bar.dontSave=nil
         bar:resetRemembered()
         bar.imguiReset = true
         bar.renderContext = "showProfilesCtx"
