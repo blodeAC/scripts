@@ -119,7 +119,7 @@ local init = function()
       local weenie = game.World.Get(wobject.id)
       wobject.name = weenie.Name
       wobject.objectClass = weenie.ObjectClass
-
+      
       local heritage = weenie.Value(IntId.HeritageGroup, -1)
       wobject.height = 1.1
 
@@ -168,6 +168,9 @@ local init = function()
       else
         game.Actions.ObjectAppraise(wobject.id)
       end
+      weenie.OnPositionChanged.Add(function()
+        wobject:anchorHpBar()
+      end)
     end
   }, {
     -- Custom iterator for pairs to return only table entries
