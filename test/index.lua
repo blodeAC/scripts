@@ -1,6 +1,12 @@
 local inspectedItems = {}
 local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
+local views = require("utilitybelt.views")
+local hud = views.Huds.CreateHud("LootInspect")
+hud.DontDrawDefaultWindow=true
+
+local lootEditor --looteditorhudholder
+local itemBeingEdited
 
 local enumMasks = {
   ItemUseable = UsableType,
@@ -21,13 +27,16 @@ local enumMasks = {
   ObjectDescriptionFlag = ObjectDescriptionFlag,
   ContainerProperties = ContainerProperties,
   PhysicsState = PhysicsState,
-  LastAppraisalResponse = DateTime
+  LastAppraisalResponse = DateTime,
+  WeaponSkill = SkillId
 }
 
 -- Event handler for Item_SetAppraiseInfo
 game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
+  if (game.World.Selected==nil or game.World.Selected.Id~=e.Data.ObjectId) then return end
+  
   local weenie = game.World.Get(e.Data.ObjectId)
-
+  
   if not weenie then
     return
   end
@@ -35,13 +44,30 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
   local itemData = {
     id = e.Data.ObjectId,
     name = weenie.Name,
-    values = {}
+    lootCriteria = {
+      IntValues = {},
+      BoolValues = {},
+      DataValues = {},
+      Int64Values = {},
+      FloatValues = {},
+      StringValues = {}
+    }
   }
 
   for _, keytype in ipairs({ "IntValues", "BoolValues", "DataValues", "Int64Values", "FloatValues", "StringValues" }) do
+    ---@type table[string]
+    itemData[keytype]={}
     for k, v in pairs(weenie[keytype]) do
-      table.insert(itemData.values, { type = keytype, key = k, value = v })
+      itemData[keytype][tostring(k)]=v
     end
+    local sortableTable = {}
+    for n in pairs(itemData[keytype]) do 
+      table.insert(sortableTable, n)
+    end
+    itemData.sorted = itemData.sorted or {}
+    itemData.sorted[keytype] = table.sort(sortableTable,function(a,b)
+      return a>b
+    end)
   end
 
   -- Update existing item or add new one
@@ -58,7 +84,278 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
   else
     table.insert(inspectedItems, itemData)
   end
+
 end)
+
+local function enumCombo(key,value)
+  local enumValues = enumMasks[tostring(key)] or _G[tostring(key)]
+  if enumValues ~= nil then
+    ImGui.TableSetColumnIndex(1)
+    ImGui.Text(key)
+    ImGui.TableSetColumnIndex(2)
+    ImGui.SetNextItemWidth(-1)
+    local currentEnumName = tostring(enumValues[value] or enumValues.FromValue and enumValues.FromValue(value) or value) --
+    if ImGui.BeginCombo("##"..key, currentEnumName) then
+      for _, enumName in ipairs(enumValues.GetValues()) do
+        local isSelected = (currentEnumName == enumName)
+        if ImGui.Selectable(enumName, isSelected) then
+          -- Handle selection if needed
+        end
+        if isSelected then
+          ImGui.SetItemDefaultFocus()
+        end
+      end
+      ImGui.EndCombo()
+    end
+    return true
+  end
+  return false
+end
+
+local function shallowcopy(orig)
+  local orig_type = type(orig)
+  local copy
+  if orig_type == 'table' then
+    copy = {}
+    for orig_key, orig_value in pairs(orig) do
+      copy[orig_key] = orig_value
+    end
+  else -- number, string, boolean, etc
+    copy = orig
+  end
+  return copy
+end
+local function sortLootEditor(item)
+  if itemBeingEdited~=item.id then
+    itemBeingEdited=shallowcopy(item)
+
+    itemBeingEdited.sorted={}
+    for valuesKey,values in pairs(itemBeingEdited.lootCriteria) do
+      itemBeingEdited[valuesKey]=values
+
+      local sortableTable = {}
+      for n in pairs(itemBeingEdited[valuesKey]) do 
+        table.insert(sortableTable, n)
+      end
+      itemBeingEdited.sorted[valuesKey] = table.sort(sortableTable,function(a,b)
+        return a>b
+      end)
+    end
+  end
+end
+local function renderTab(item,disabled,criteriaObject)
+  local disabled=disabled or false
+
+  ImGui.SetNextItemWidth(-1)
+  if ImGui.BeginTable("##"..item.id, 3,_imgui.ImGuiTableFlags.Resizable) then
+    ImGui.TableSetupColumn("##loot",_imgui.ImGuiTableColumnFlags.WidthFixed,20)
+
+    for i=#item.sorted.IntValues,1,-1 do
+      local key=item.sorted.IntValues[i]
+      local value=item.IntValues[key]
+      if value==nil then
+        item.sorted.BoolValues[i]=nil
+      else    
+        ImGui.TableNextRow()
+        ImGui.TableSetColumnIndex(0)
+        local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.IntValues[key]~=nil or false)
+        if changed then
+          if newValue==true then
+            criteriaObject.IntValues[key]=value
+          else
+            criteriaObject.IntValues[key]=nil
+          end
+          sortLootEditor(item)
+        end
+        ImGui.BeginDisabled(disabled)
+        if enumCombo(key,value) then
+        else
+          ImGui.TableSetColumnIndex(1)
+          ImGui.Text(key)
+          ImGui.TableSetColumnIndex(2)
+          ImGui.SetNextItemWidth(-1)
+          local changed,newValue = ImGui.InputInt("##"..key, value,1,10)
+          if changed then
+            criteriaObject.IntValues[key]=newValue
+          end
+        end
+        ImGui.EndDisabled()
+      end
+    end
+
+
+    for i=#item.sorted.BoolValues,1,-1 do
+      local key=item.sorted.BoolValues[i]
+      local value=item.BoolValues[key]
+      
+      if value==nil then
+        item.sorted.BoolValues[i]=nil
+      else    
+        ImGui.TableNextRow()
+        ImGui.TableSetColumnIndex(0)
+        local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.BoolValues[key]~=nil or false)
+        if changed then
+          if newValue==true then
+            criteriaObject.BoolValues[key]=true
+          else
+            criteriaObject.BoolValues[key]=nil
+          end
+          sortLootEditor(item)
+        end
+        ImGui.BeginDisabled(disabled)
+        if enumCombo(key,value) then
+        else
+          ImGui.TableSetColumnIndex(1)
+          ImGui.Text(key)
+          ImGui.TableSetColumnIndex(2)
+          ImGui.SetNextItemWidth(-1)
+          local changed,newValue = ImGui.Checkbox("##"..key, value)
+          if changed then
+            criteriaObject.BoolValues[key]=newValue
+          end
+        end
+        ImGui.EndDisabled()
+      end
+    end
+
+    for i=#item.sorted.DataValues,1,-1 do
+      local key=item.sorted.DataValues[i]
+      local value=item.DataValues[key]
+      if value==nil then
+        item.sorted.DataValues[i]=nil
+      else
+        ImGui.TableNextRow()
+        ImGui.TableSetColumnIndex(0)
+        local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.DataValues[key]~=nil or false)
+        if changed then
+          if newValue==true then
+            criteriaObject.DataValues[key]=value
+          else
+            criteriaObject.DataValues[key]=nil
+          end
+          sortLootEditor(item)
+        end    
+        ImGui.BeginDisabled(disabled)
+        if enumCombo(key,value) then
+        else
+          ImGui.TableSetColumnIndex(1)
+          ImGui.Text(key)
+          ImGui.TableSetColumnIndex(2)
+          ImGui.SetNextItemWidth(-1)
+          local changed,newValue = ImGui.InputInt("##"..key,value) 
+          if changed then
+            criteriaObject.DataValues[key]=newValue
+          end
+        end
+        ImGui.EndDisabled()
+      end
+    end
+
+    
+    for i=#item.sorted.Int64Values,1,-1 do
+      local key=item.sorted.Int64Values[i]
+      local value=item.Int64Values[key]
+      if value==nil then
+        item.sorted.Int64Values[i]=nil
+      else
+        ImGui.TableNextRow()
+        ImGui.TableSetColumnIndex(0)
+        local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.Int64Values[key]~=nil or false)
+        if changed then
+          if newValue==true then
+            criteriaObject.Int64Values[key]=value
+          else
+            criteriaObject.Int64Values[key]=nil
+          end
+          sortLootEditor(item)
+        end
+        ImGui.BeginDisabled(disabled)
+        if enumCombo(key,value) then
+        else
+          ImGui.TableSetColumnIndex(1)
+          ImGui.Text(key)
+          ImGui.TableSetColumnIndex(2)
+          ImGui.SetNextItemWidth(-1)
+          local changed,newValue = ImGui.InputDouble("##"..key,value,10,100)
+          if changed then
+            criteriaObject.Int64Values[key]=newValue
+          end
+        end
+        ImGui.EndDisabled()
+      end
+    end
+
+
+    for i=#item.sorted.FloatValues,1,-1 do
+      local key=item.sorted.FloatValues[i]
+      local value=item.FloatValues[key]
+      if value==nil then
+        item.sorted.FloatValues[i]=nil
+      else
+        ImGui.TableNextRow()
+        ImGui.TableSetColumnIndex(0)
+        local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.FloatValues[key]~=nil or false)
+        if changed then
+          if newValue==true then
+            criteriaObject.FloatValues[key]=value
+          else
+            criteriaObject.FloatValues[key]=nil
+          end
+          sortLootEditor(item)
+        end
+        ImGui.BeginDisabled(disabled)
+        if enumCombo(key,value) then
+        else
+          ImGui.TableSetColumnIndex(1)
+          ImGui.Text(key)
+          ImGui.TableSetColumnIndex(2)
+          ImGui.SetNextItemWidth(-1)
+          local changed,newValue =ImGui.InputFloat("##"..key,value,.01,0.1)
+          if changed then
+            criteriaObject.FloatValues[key]=newValue
+          end
+        end
+        ImGui.EndDisabled()
+      end
+    end
+
+    for i=#item.sorted.StringValues,1,-1 do
+      local key=item.sorted.StringValues[i]
+      local value=item.StringValues[key]     
+      if value==nil then
+        item.sorted.StringValues[i]=nil
+      else
+        ImGui.TableNextRow()
+        if key~="HeritageGroup" then
+          ImGui.TableSetColumnIndex(0)
+          local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.StringValues[key]~=nil or false)
+          if changed then
+            if newValue==true then
+              criteriaObject.StringValues[key]=value
+            else
+              criteriaObject.StringValues[key]=nil
+            end
+            sortLootEditor(item)
+          end
+          ImGui.BeginDisabled(disabled)
+          if enumCombo(key,value) then
+          else
+            ImGui.TableSetColumnIndex(1)
+            ImGui.Text(key)
+            ImGui.TableSetColumnIndex(2)
+            ImGui.SetNextItemWidth(-1)
+            local changed,newValue = ImGui.InputText("##"..key,value,20)
+            if changed then
+              criteriaObject.StringValues[key]=newValue
+            end
+          end
+          ImGui.EndDisabled()
+        end
+      end
+    end
+    ImGui.EndTable()
+  end
+end
 
 -- ImGui render function
 local function renderInspectedItems()
@@ -69,36 +366,21 @@ local function renderInspectedItems()
       if ImGui.BeginTabBar("InspectedItemsTabs") then
         for i, item in ipairs(inspectedItems) do
           if ImGui.BeginTabItem(item.name .. "##" .. i) then
-            ImGui.Text("Name: " .. item.name)
-            ImGui.Separator()
-            for _, value in ipairs(item.values) do
-              -- Check if the value is an enum
-              ---@type EnumConst[]
-              local enumValues = enumMasks[tostring(value.key)] or _G[tostring(value.key)]
-              if enumValues ~= nil then
-                if not (tostring(value.key)=="HeritageGroup" and value.type=="StringValues") then --ambiguous enum, same for int and string (???? weird ACE implementation)
-                  local currentEnumName = tostring(enumValues[value.value] or enumValues.FromValue and enumValues.FromValue(value.value) or value.value)--
-                  if ImGui.BeginCombo(value.key, currentEnumName) then
-                    for _, enumName in ipairs(enumValues.GetValues()) do
-                      local isSelected = (currentEnumName == enumName)
-                      if ImGui.Selectable(enumName, isSelected) then
-                        -- Handle selection if needed
-                      end
-                      if isSelected then
-                        ImGui.SetItemDefaultFocus()
-                      end
-                    end
-                    ImGui.EndCombo()
-                  end
-                end
-              else
-                local valueStr = tostring(value.value):gsub("%%", "%%%%")
-                ImGui.Text(tostring(value.key) .. " = " .. valueStr)
-              end
-            end
-
+            renderTab(item,true,item.lootCriteria)
             ImGui.EndTabItem()
           end
+
+          if ImGui.Button("Template loot rule") then
+            sortLootEditor(item)
+            if lootEditor then lootEditor.Dispose() end
+            lootEditor=views.Huds.CreateHud("LootEditor")
+            lootEditor.DontDrawDefaultWindow = true
+            lootEditor.Visible = true
+            lootEditor.OnRender.Add(function()
+              renderTab(itemBeingEdited,false,itemBeingEdited)
+            end)
+          end
+
         end
         ImGui.EndTabBar()
       end
@@ -107,6 +389,5 @@ local function renderInspectedItems()
   end
 end
 
-local hud = require("utilitybelt.views").Huds.CreateHud("iteminfo")
 -- Add the render function to your game's render loop
 hud.OnRender.Add(renderInspectedItems)
