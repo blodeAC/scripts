@@ -856,8 +856,9 @@ bars({
 
         for _, object in ipairs(game.World.GetLandscape()) do
           if string.find(string.lower(object.Name), string.lower(name)) then
+            -- print("Found Mob: "..object.Name)
             local distance = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(object.Id))
-            if distance < minDistance and (matchingMob == nil or matchingMob.Distance < distance) then
+            if distance < minDistance and (matchingMob == nil or distance < matchingMob.Distance) then
               minDistance = distance
               matchingMob = {
                 Id = object.Id,
@@ -865,6 +866,7 @@ bars({
                 Distance = distance,
                 Coordinates = acclient.Movement.GetPhysicsCoordinates(object.Id),
               }
+              --  print("Matching Mob: "..matchingMob.Name.."("..matchingMob.Id.."): Distance="..distance)
             end
           end
         end
@@ -914,6 +916,21 @@ bars({
         local baseY1 = centerY + math.sin(baseAngle1) * (arrowWidth / 2)
         local baseX2 = centerX + math.cos(baseAngle2) * (arrowWidth / 2)
         local baseY2 = centerY + math.sin(baseAngle2) * (arrowWidth / 2)
+        
+        -- Define the bounding box for the arrow
+        local minX = math.min(tipX, baseX1, baseX2)
+        local minY = math.min(tipY, baseY1, baseY2)
+        local maxX = math.max(tipX, baseX1, baseX2)
+        local maxY = math.max(tipY, baseY1, baseY2)
+
+        -- Create an invisible button over the arrow area
+        ImGui.SetCursorScreenPos(Vector2.new(minX, minY))
+        ImGui.InvisibleButton("ArrowClick", Vector2.new(maxX - minX, maxY - minY))
+
+        if ImGui.IsItemClicked() then
+            game.Actions.ObjectSelect(currentMob.Id)
+            --print("Arrow clicked! Target mob ID: " .. currentMob.Id)
+        end
 
         -- Color interpolation
         local function interpolateColor(dist)
@@ -1026,8 +1043,8 @@ bars({
 
       if bar.currentMob then
         local distance = acclient.Coordinates.Me.DistanceTo(bar.currentMob.Coordinates)
-        bar.renderArrowToMob(bar.currentMob,distance)
         ImGui.Text(string.format("  %s (%.2f m)", bar.currentMob.Name,distance))
+        bar.renderArrowToMob(bar.currentMob,distance)
       else
         ImGui.Text("  No matching mob detected")
       end
