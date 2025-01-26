@@ -841,6 +841,7 @@ bars({
     name = "^mobPointer",
     settings = {
       enabled = false,
+      icon_hex = 0x060069F6
     },
     init = function(bar)
       bar.mobToSearch = bar.mobToSearch or ""
@@ -870,15 +871,9 @@ bars({
         return matchingMob
       end
 
-
-      bar.renderArrowToMob = function()
+      bar.renderArrowToMob = function(currentMob, distance)
         ---@diagnostic disable:undefined-field
-        if not game.World.Exists(bar.currentMob.Id) then
-          bar.currentMob = nil
-          return
-        end
-        local angleToMob = math.rad(acclient.Coordinates.Me.HeadingTo(acclient.Movement.GetPhysicsCoordinates(bar
-          .currentMob.Id)))
+        local angleToMob = math.rad(acclient.Coordinates.Me.HeadingTo(acclient.Movement.GetPhysicsCoordinates(currentMob.Id)))
         ---@diagnostic enable:undefined-field
 
         -- Get the relative heading: the difference between your current heading and the heading to the mob
@@ -920,12 +915,39 @@ bars({
         local baseX2 = centerX + math.cos(baseAngle2) * (arrowWidth / 2)
         local baseY2 = centerY + math.sin(baseAngle2) * (arrowWidth / 2)
 
+        -- Color interpolation
+        local function interpolateColor(dist)
+          local r, g = 255, 0  -- Start with red (255, 0, 0)
+
+          if dist > 80 then
+            dist = 80
+          elseif dist < 5 then
+            dist = 5
+          end
+
+          if dist > 40 then
+            -- Fade from red to yellow (255,0,0 → 255,255,0)
+            local factor = (dist - 40) / 40
+            g = math.floor(255 * (1 - factor))  -- Increase green
+          else
+            -- Fade from yellow to green (255,255,0 → 0,255,0)
+            local factor = dist / 40
+            r = math.floor(255 * factor)  -- Decrease red
+            g = 255
+          end
+
+          -- Convert RGB to 0xAARRGGBB (with full opacity)
+          return 0xFF000000 + (r * 0x1) + (g * 0x100)
+        end
+
+        local arrowColor = interpolateColor(distance)
+
         -- Draw the arrow
         drawList.AddTriangleFilled(
           Vector2.new(tipX, tipY),
           Vector2.new(baseX1, baseY1),
           Vector2.new(baseX2, baseY2),
-          0xFF0000FF -- Red color
+          arrowColor
         )
 
         -- Add an outline
@@ -938,7 +960,6 @@ bars({
         )
       end
 
-
       game.World.OnObjectCreated.Add(function(e)
         if bar.mobToSearch and bar.mobToSearch ~= "" and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.mobToSearch)) then
           if game.Character.InPortalSpace then
@@ -946,10 +967,18 @@ bars({
               bar.currentMob = bar.findMobByName(bar.mobToSearch)
             end)
           else
+            sleep(100)
             bar.currentMob = bar.findMobByName(bar.mobToSearch)
           end
         end
       end)
+
+      game.Messages.Incoming.Inventory_PickupEvent.Add(function(e)
+        if bar.currentMob ~= nil and e.Data.ObjectId == bar.currentMob.Id then
+          bar.currentMob = nil
+        end
+      end)
+
       game.World.OnObjectReleased.Add(function(e)
         ---@diagnostic disable-next-line
         if bar.currentMob and e.ObjectId == bar.currentMob.Id then
@@ -996,9 +1025,9 @@ bars({
       end
 
       if bar.currentMob then
-        bar.renderArrowToMob()
-        ImGui.Text(string.format("  %s (%.2f m)", bar.currentMob.Name,
-          acclient.Coordinates.Me.DistanceTo(bar.currentMob.Coordinates)))
+        local distance = acclient.Coordinates.Me.DistanceTo(bar.currentMob.Coordinates)
+        bar.renderArrowToMob(bar.currentMob,distance)
+        ImGui.Text(string.format("  %s (%.2f m)", bar.currentMob.Name,distance))
       else
         ImGui.Text("  No matching mob detected")
       end
