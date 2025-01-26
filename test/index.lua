@@ -87,7 +87,7 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
 
 end)
 
-local function enumCombo(key,value)
+local function enumCombo(item,valueTable,key,value)
   local enumValues = enumMasks[tostring(key)] or _G[tostring(key)]
   if enumValues ~= nil then
     ImGui.TableSetColumnIndex(1)
@@ -99,7 +99,7 @@ local function enumCombo(key,value)
       for _, enumName in ipairs(enumValues.GetValues()) do
         local isSelected = (currentEnumName == enumName)
         if ImGui.Selectable(enumName, isSelected) then
-          -- Handle selection if needed
+          item[valueTable][key] = enumValues.FromValue(enumName)
         end
         if isSelected then
           ImGui.SetItemDefaultFocus()
@@ -145,6 +145,8 @@ local function sortLootEditor(item)
 end
 local function renderTab(item,disabled,criteriaObject)
   local disabled=disabled or false
+  local drawlist=ImGui.GetWindowDrawList()
+  local separators = {}
 
   ImGui.SetNextItemWidth(-1)
   if ImGui.BeginTable("##"..item.id, 3,_imgui.ImGuiTableFlags.Resizable) then
@@ -168,7 +170,7 @@ local function renderTab(item,disabled,criteriaObject)
           sortLootEditor(item)
         end
         ImGui.BeginDisabled(disabled)
-        if enumCombo(key,value) then
+        if enumCombo(item,"IntValues",key,value) then
         else
           ImGui.TableSetColumnIndex(1)
           ImGui.Text(key)
@@ -182,7 +184,10 @@ local function renderTab(item,disabled,criteriaObject)
         ImGui.EndDisabled()
       end
     end
-
+    
+    ImGui.TableNextRow()
+    ImGui.TableSetColumnIndex(0)
+    table.insert(separators,ImGui.GetCursorScreenPos())
 
     for i=#item.sorted.BoolValues,1,-1 do
       local key=item.sorted.BoolValues[i]
@@ -203,7 +208,7 @@ local function renderTab(item,disabled,criteriaObject)
           sortLootEditor(item)
         end
         ImGui.BeginDisabled(disabled)
-        if enumCombo(key,value) then
+        if enumCombo(item,"BoolValues",key,value) then
         else
           ImGui.TableSetColumnIndex(1)
           ImGui.Text(key)
@@ -217,6 +222,10 @@ local function renderTab(item,disabled,criteriaObject)
         ImGui.EndDisabled()
       end
     end
+    
+    ImGui.TableNextRow()
+    ImGui.TableSetColumnIndex(0)
+    table.insert(separators,ImGui.GetCursorScreenPos())
 
     for i=#item.sorted.DataValues,1,-1 do
       local key=item.sorted.DataValues[i]
@@ -236,7 +245,7 @@ local function renderTab(item,disabled,criteriaObject)
           sortLootEditor(item)
         end    
         ImGui.BeginDisabled(disabled)
-        if enumCombo(key,value) then
+        if enumCombo(item,"DataValues",key,value) then
         else
           ImGui.TableSetColumnIndex(1)
           ImGui.Text(key)
@@ -250,8 +259,11 @@ local function renderTab(item,disabled,criteriaObject)
         ImGui.EndDisabled()
       end
     end
-
     
+    ImGui.TableNextRow()
+    ImGui.TableSetColumnIndex(0)
+    table.insert(separators,ImGui.GetCursorScreenPos())
+
     for i=#item.sorted.Int64Values,1,-1 do
       local key=item.sorted.Int64Values[i]
       local value=item.Int64Values[key]
@@ -270,7 +282,7 @@ local function renderTab(item,disabled,criteriaObject)
           sortLootEditor(item)
         end
         ImGui.BeginDisabled(disabled)
-        if enumCombo(key,value) then
+        if enumCombo(item,"Int64Values",key,value) then
         else
           ImGui.TableSetColumnIndex(1)
           ImGui.Text(key)
@@ -284,7 +296,10 @@ local function renderTab(item,disabled,criteriaObject)
         ImGui.EndDisabled()
       end
     end
-
+    
+    ImGui.TableNextRow()
+    ImGui.TableSetColumnIndex(0)
+    table.insert(separators,ImGui.GetCursorScreenPos())
 
     for i=#item.sorted.FloatValues,1,-1 do
       local key=item.sorted.FloatValues[i]
@@ -304,7 +319,7 @@ local function renderTab(item,disabled,criteriaObject)
           sortLootEditor(item)
         end
         ImGui.BeginDisabled(disabled)
-        if enumCombo(key,value) then
+        if enumCombo(item,"FloatValues",key,value) then
         else
           ImGui.TableSetColumnIndex(1)
           ImGui.Text(key)
@@ -319,14 +334,18 @@ local function renderTab(item,disabled,criteriaObject)
       end
     end
 
+    ImGui.TableNextRow()
+    ImGui.TableSetColumnIndex(0)
+    table.insert(separators,ImGui.GetCursorScreenPos())
+
     for i=#item.sorted.StringValues,1,-1 do
       local key=item.sorted.StringValues[i]
       local value=item.StringValues[key]     
       if value==nil then
         item.sorted.StringValues[i]=nil
       else
-        ImGui.TableNextRow()
         if key~="HeritageGroup" then
+          ImGui.TableNextRow()
           ImGui.TableSetColumnIndex(0)
           local changed,newValue=ImGui.Checkbox("##"..key.."_lootCriteria",criteriaObject.StringValues[key]~=nil or false)
           if changed then
@@ -338,7 +357,7 @@ local function renderTab(item,disabled,criteriaObject)
             sortLootEditor(item)
           end
           ImGui.BeginDisabled(disabled)
-          if enumCombo(key,value) then
+          if enumCombo(item,"StringValues",key,value) then
           else
             ImGui.TableSetColumnIndex(1)
             ImGui.Text(key)
@@ -354,6 +373,10 @@ local function renderTab(item,disabled,criteriaObject)
       end
     end
     ImGui.EndTable()
+
+    for i,cursor in ipairs(separators) do
+      drawlist.AddLine(cursor,cursor+Vector2.new(ImGui.GetWindowWidth(),0),0xAAAAAAAA)
+    end
   end
 end
 
@@ -367,20 +390,20 @@ local function renderInspectedItems()
         for i, item in ipairs(inspectedItems) do
           if ImGui.BeginTabItem(item.name .. "##" .. i) then
             renderTab(item,true,item.lootCriteria)
+
+            if ImGui.Button("Template loot rule") then
+              sortLootEditor(item)
+              if lootEditor then lootEditor.Dispose() end
+              lootEditor=views.Huds.CreateHud("LootEditor")
+              lootEditor.DontDrawDefaultWindow = true
+              lootEditor.Visible = true
+              lootEditor.OnRender.Add(function()
+                renderTab(itemBeingEdited,false,itemBeingEdited)
+              end)
+            end
+
             ImGui.EndTabItem()
           end
-
-          if ImGui.Button("Template loot rule") then
-            sortLootEditor(item)
-            if lootEditor then lootEditor.Dispose() end
-            lootEditor=views.Huds.CreateHud("LootEditor")
-            lootEditor.DontDrawDefaultWindow = true
-            lootEditor.Visible = true
-            lootEditor.OnRender.Add(function()
-              renderTab(itemBeingEdited,false,itemBeingEdited)
-            end)
-          end
-
         end
         ImGui.EndTabBar()
       end
