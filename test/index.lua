@@ -84,8 +84,10 @@ local function evaluateLoot(item)
             local comparator = ruleItem.comparator[keyValue] and ruleItem.comparator[keyValue][key] or "=="
             local ruleValue = value
 
-            if keyValue=="StringValues" and comparator=="==" and not string.find(itemValue,ruleValue) then
-              lootable = false
+            if keyValue=="StringValues" and comparator=="==" then
+              if not Regex.IsMatch(itemValue,ruleValue) then
+                lootable = false
+              end
             elseif comparator == "==" and itemValue ~= ruleValue then
               lootable = false
             elseif comparator == ">=" and itemValue < ruleValue then
@@ -113,6 +115,12 @@ end
 
 game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
   if (game.World.Selected == nil or game.World.Selected.Id ~= e.Data.ObjectId) then return end
+  
+  if e.Data.SpellBook then
+    for i,spellId in ipairs(game.World.Get(e.Data.ObjectId).SpellIds) do
+      print(game.Character.SpellBook.Get(spellId.Id).Name)
+    end
+  end
 
   ---@type table<string, any>
   local weenie = game.World.Get(e.Data.ObjectId)
@@ -556,7 +564,7 @@ local function renderTab(item, disabled, criteriaObject)
           if enumCombo(item, "StringValues", key, value) then
           else
             ImGui.SetNextItemWidth(-1)
-            local changed, newValue = ImGui.InputText("##" .. key, value, 20)
+            local changed, newValue = ImGui.InputText("##" .. key, value, 64)
             if changed then
               criteriaObject.StringValues[key] = newValue
             end
@@ -613,7 +621,7 @@ function renderLootEditor()
   lootEditor.OnRender.Add(function()
     renderTab(itemBeingEdited, false, itemBeingEdited)
     local lootRuleName = itemBeingEdited.name
-    local changed,newValue=ImGui.InputText("##saveLootRuleName",lootRuleName,32)
+    local changed,newValue=ImGui.InputText("##saveLootRuleName",lootRuleName,64)
     if changed then
       if newValue~="" then
         itemBeingEdited.name=newValue
