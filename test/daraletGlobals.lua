@@ -154,7 +154,7 @@ D_WeaponSubtype.FromValue = function(value)
   end
 end
 
-extraEnums = {
+ExtraEnums = {
   IntValues = setmetatable({
     "D_WardLevel",
     "D_ArmorSlots",
@@ -253,6 +253,63 @@ extraEnums = {
       end
     end
   }),
+  BoolValues = setmetatable({
+    "D_UseArchetypeSystem",
+    "D_OverrideArchetypeXp",
+    "D_OverrideArchetypeHealth",
+    "D_OverrideArchetypeStamina",
+    "D_OverrideArchetypeMana",
+    "D_OverrideArchetypeSkills",
+    "D_BossKillXpReward",
+    "D_ArmorPatchApplied",
+    "D_UseLegacyThreatSystem",
+    "D_OverrideVisualRange",
+    "D_AffectsOnlyAis",
+    "D_ExamineItemsSilently", -- allows for no/custom message upon NPC Emote Refuse examination of items
+    "D_TakeItemsSilently", -- allows for no/custom messages for NPC TakeItems emote
+    "D_DungeonLockout", -- if object is on landblock, no new players will be added to permitted list
+    "D_CannotBreakStealth",
+    "D_CampfireHotspot",
+    "D_MutableQuestItem",
+    "D_StruckByUnshrouded",
+    "D_MenhirManaHotspot",
+    "D_UseNearbyPlayerScaling",
+    "D_IsBankContainer",
+    "D_ShroudKillXpReward",
+    "D_IsPlayerTierChest",
+    "D_UpgradeableQuestItem",
+    "D_FellowshipRequired",
+    "D_SpecialPropertiesRequireMana",
+    "D_RepeatConfirmation",
+    "D_SilentCombat",
+    "D_ReturnHomeWhenStuck",
+  },{
+    __index = function (t, k)
+      local k_num
+      if type(k)=="string" then
+        k_num = tonumber(k)
+      end
+      if not k_num then
+        return k
+      elseif k_num > 130 and t[k_num-130]~=nil then
+        return t[k_num-130]
+      else
+        return k
+      end
+    end
+  }),
+  DataValues = setmetatable({
+  }, {
+    __index = function (t, k)
+      return k
+    end
+  }),
+  Int64Values = setmetatable({
+  }, {
+    __index = function (t, k)
+      return k
+    end
+  }),
   FloatValues = setmetatable({
     "D_LootQualityMod",
     "D_KillXpMod",
@@ -346,51 +403,6 @@ extraEnums = {
         return t[k_num-171]
       elseif t[k_num-19999+27]~=nil then
         return t[k_num-19999+27]
-      else
-        return k
-      end
-    end
-  }),
-  BoolValues = setmetatable({
-    "D_UseArchetypeSystem",
-    "D_OverrideArchetypeXp",
-    "D_OverrideArchetypeHealth",
-    "D_OverrideArchetypeStamina",
-    "D_OverrideArchetypeMana",
-    "D_OverrideArchetypeSkills",
-    "D_BossKillXpReward",
-    "D_ArmorPatchApplied",
-    "D_UseLegacyThreatSystem",
-    "D_OverrideVisualRange",
-    "D_AffectsOnlyAis",
-    "D_ExamineItemsSilently", -- allows for no/custom message upon NPC Emote Refuse examination of items
-    "D_TakeItemsSilently", -- allows for no/custom messages for NPC TakeItems emote
-    "D_DungeonLockout", -- if object is on landblock, no new players will be added to permitted list
-    "D_CannotBreakStealth",
-    "D_CampfireHotspot",
-    "D_MutableQuestItem",
-    "D_StruckByUnshrouded",
-    "D_MenhirManaHotspot",
-    "D_UseNearbyPlayerScaling",
-    "D_IsBankContainer",
-    "D_ShroudKillXpReward",
-    "D_IsPlayerTierChest",
-    "D_UpgradeableQuestItem",
-    "D_FellowshipRequired",
-    "D_SpecialPropertiesRequireMana",
-    "D_RepeatConfirmation",
-    "D_SilentCombat",
-    "D_ReturnHomeWhenStuck",
-  },{
-    __index = function (t, k)
-      local k_num
-      if type(k)=="string" then
-        k_num = tonumber(k)
-      end
-      if not k_num then
-        return k
-      elseif k_num > 130 and t[k_num-130]~=nil then
-        return t[k_num-130]
       else
         return k
       end
