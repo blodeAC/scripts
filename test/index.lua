@@ -8,6 +8,7 @@ local lootRuleHolder --guess
 local itemBeingEdited
 local lootRules = {}
 
+
 -----------------------------------------------------
 --- enum stuff
 -----------------------------------------------------
