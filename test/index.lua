@@ -2,18 +2,19 @@ local inspectedItems = {}
 local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
-if game.ServerName=="Daralet" then 
-  require("DaraletGlobals")
-end
-
-local hud = views.Huds.CreateHud("LootInspect",0x06001A8A)
-hud.DontDrawDefaultWindow = true
-hud.WindowSettings = _imgui.ImGuiWindowFlags.NoCollapse
 
 local lootEditor     --looteditorhudholder
 local lootRuleHolder --guess
 local itemBeingEdited
 local lootRules = {}
+
+-----------------------------------------------------
+--- enum stuff
+-----------------------------------------------------
+
+if game.ServerName=="Daralet" then 
+  require("DaraletGlobals")
+end
 
 local enumMasks = {
   ItemUseable = UsableType,
@@ -70,11 +71,12 @@ local enumMasks = {
   D_ArmorStyle = D_ArmorStyle,
   D_WeaponSubtype = D_WeaponSubtype
 }
+local allValueStrings = { "IntValues", "BoolValues", "DataValues", "Int64Values", "FloatValues", "StringValues" }
 
 local function evaluateLoot(item)
   for i, ruleItem in ipairs(lootRules) do
     local lootable = true
-    for _, keyValue in ipairs({ "IntValues", "BoolValues", "DataValues", "Int64Values", "FloatValues", "StringValues" }) do
+    for _, keyValue in ipairs(allValueStrings) do
       if lootable then
         for key, value in pairs(ruleItem[keyValue]) do
           local itemValue = item[keyValue][key]
@@ -115,12 +117,6 @@ end
 
 game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
   if (game.World.Selected == nil or game.World.Selected.Id ~= e.Data.ObjectId) then return end
-  
-  if e.Data.SpellBook then
-    for i,spellId in ipairs(game.World.Get(e.Data.ObjectId).SpellIds) do
-      print(game.Character.SpellBook.Get(spellId.Id).Name)
-    end
-  end
 
   ---@type table<string, any>
   local weenie = game.World.Get(e.Data.ObjectId)
@@ -138,11 +134,19 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
       DataValues = {},
       Int64Values = {},
       FloatValues = {},
-      StringValues = {}
-    }
+      StringValues = {},
+      Spells = {}
+    },
+    spells = {}
   }
 
-  for _, keytype in ipairs({ "IntValues", "BoolValues", "DataValues", "Int64Values", "FloatValues", "StringValues" }) do
+  if e.Data.SpellBook then
+    for i,spellId in ipairs(game.World.Get(e.Data.ObjectId).SpellIds) do
+      table.insert(itemData.spells,game.Character.SpellBook.Get(spellId.Id).Name)
+    end
+  end
+
+  for _, keytype in ipairs(allValueStrings) do
     ---@type table<string, table<string, any>>
     itemData[keytype] = {}
     for k, v in pairs(weenie[keytype]) do
@@ -158,7 +162,6 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
     end)
   end
 
-  -- Update existing item or add new one
   local existingIndex = nil
   for i, item in ipairs(inspectedItems) do
     if item.id == itemData.id then
@@ -177,7 +180,11 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
   end
 end)
 
---criteriaObject.comparator.IntValues[key]
+
+-----------------------------------------------------
+--- ImGui helpers
+-----------------------------------------------------
+
 local function comparatorRender(comparators, criteriaObject, valuesKey, key)
   if comparators then
     if criteriaObject.comparator == nil then
@@ -210,7 +217,7 @@ local function enumCombo(item, valueTable, key, value)
   ---@diagnostic disable:undefined-field
   local enumValues
   if valueTable=="IntValues" then
-    enumValues = enumMasks[extraEnums.IntValues[key]] or _G[tostring(key)]
+    enumValues = enumMasks[ExtraEnums.IntValues[key]] or _G[tostring(key)]
   else
     enumValues = enumMasks[tostring(key)] or _G[tostring(key)]
   end
@@ -260,6 +267,7 @@ local function shallowcopy(orig)
   end
   return copy
 end
+
 local function sortLootEditor(item)
   local comparator = (itemBeingEdited and itemBeingEdited.comparator and shallowcopy(itemBeingEdited.comparator)) or {}
 
@@ -280,6 +288,35 @@ local function sortLootEditor(item)
   end
 end
 
+local imguiInputs = {
+  IntValues = function(key,value)
+    return ImGui.InputInt("##" .. key, value, 1, 10)
+  end,
+  BoolValues = function(key,value)
+    return ImGui.Checkbox("##" .. key, value)
+  end,
+  DataValues = function(key,value)
+    return ImGui.InputInt("##" .. key, value)
+  end,
+  Int64Values = function(key,value)
+    return ImGui.InputDouble("##" .. key, value, 10, 100,"%.0f")
+  end,
+  FloatValues = function(key,value)
+    return ImGui.InputFloat("##" .. key, value, .01, 0.1)
+  end,
+  StringValues = function(key,value)
+    return ImGui.InputText("##" .. key, value, 64)
+  end  
+}
+
+-----------------------------------------------------
+--- ImGui renders
+-----------------------------------------------------
+
+local hud = views.Huds.CreateHud("LootInspect",0x06001A8A)
+hud.DontDrawDefaultWindow = true
+hud.WindowSettings = _imgui.ImGuiWindowFlags.NoCollapse
+
 local function renderTab(item, disabled, criteriaObject)
   local disabled = disabled or false
   local drawlist = ImGui.GetWindowDrawList()
@@ -294,7 +331,6 @@ local function renderTab(item, disabled, criteriaObject)
   local cursorStartPos = ImGui.GetCursorScreenPos()
   local childMax = Vector2.new(-1,availableHeight - buttonHeight)
   ImGui.BeginChild("TableRegion", childMax, true)
-  --ImGui.PushClipRect(cursorPos,cursorPos+childMax,true)
   if ImGui.BeginTable("##" .. item.id, (comparators and 4 or 3), _imgui.ImGuiTableFlags.Resizable) then
     ImGui.TableSetupColumn("##loot", _imgui.ImGuiTableColumnFlags.WidthFixed, 20)
     ImGui.TableSetupColumn("##lootkey")
@@ -302,279 +338,57 @@ local function renderTab(item, disabled, criteriaObject)
       ImGui.TableSetupColumn("##comparators",_imgui.ImGuiTableColumnFlags.WidthFixed,60)
     end
     
-    for i = #item.sorted.IntValues, 1, -1 do
-      local key = item.sorted.IntValues[i]
-      local value = item.IntValues[key]
+    for _,valuesKey in ipairs(allValueStrings) do
+      for i = #item.sorted[valuesKey], 1, -1 do
+        local key = item.sorted[valuesKey][i]
+        local value = item[valuesKey][key]
 
-      if value == nil then
-        item.sorted.BoolValues[i] = nil
-      else
-        ImGui.TableNextRow()
-        ImGui.TableSetColumnIndex(0)
-        local changed, newValue = ImGui.Checkbox("##" .. key .. "_lootCriteria",
-          criteriaObject.IntValues[key] ~= nil or false)
-        if changed then
-          if newValue == true then
-            criteriaObject.IntValues[key] = value
-          else
-            criteriaObject.IntValues[key] = nil
-          end
-          sortLootEditor(item)
-        end
-        ImGui.BeginDisabled(disabled)
-
-        ImGui.TableSetColumnIndex(1)
-        ImGui.Text(extraEnums.IntValues[key])
-        ImGui.TableNextColumn()
-        comparatorRender(comparators, criteriaObject, "IntValues", key)
-
-        if enumCombo(item, "IntValues", key, value) then
+        if value == nil then
+          item.sorted[valuesKey][i] = nil
         else
-          ImGui.SetNextItemWidth(-1)
-          local changed, newValue = ImGui.InputInt("##" .. key, value, 1, 10)
-          if changed then
-            criteriaObject.IntValues[key] = newValue
-          end
-        end
-        ImGui.EndDisabled()
-      end
-    end
-
-    if #item.sorted.IntValues > 0 then
-      ImGui.TableNextRow()
-      ImGui.TableSetColumnIndex(0)
-      local linePos = ImGui.GetCursorScreenPos()
-      if linePos.Y<(cursorStartPos.Y+childMax.Y) and linePos.Y>cursorStartPos.Y then
-        table.insert(separators, ImGui.GetCursorScreenPos())
-      end
-    end
-
-    for i = #item.sorted.BoolValues, 1, -1 do
-      local key = item.sorted.BoolValues[i]
-      local value = item.BoolValues[key]
-
-      if value == nil then
-        item.sorted.BoolValues[i] = nil
-      else
-        ImGui.TableNextRow()
-        ImGui.TableSetColumnIndex(0)
-        local changed, newValue = ImGui.Checkbox("##" .. key .. "_lootCriteria",
-          criteriaObject.BoolValues[key] ~= nil or false)
-        if changed then
-          if newValue == true then
-            criteriaObject.BoolValues[key] = true
-          else
-            criteriaObject.BoolValues[key] = nil
-          end
-          sortLootEditor(item)
-        end
-        ImGui.BeginDisabled(disabled)
-
-        ImGui.TableSetColumnIndex(1)
-        ImGui.Text(extraEnums.BoolValues[key])
-        ImGui.TableNextColumn()
-        comparatorRender(comparators, criteriaObject, "BoolValues", key)
-
-        if enumCombo(item, "BoolValues", key, value) then
-        else
-          ImGui.SetNextItemWidth(-1)
-          local changed, newValue = ImGui.Checkbox("##" .. key, value)
-          if changed then
-            criteriaObject.BoolValues[key] = newValue
-          end
-        end
-        ImGui.EndDisabled()
-      end
-    end
-
-    if #item.sorted.BoolValues > 0 then
-      ImGui.TableNextRow()
-      ImGui.TableSetColumnIndex(0)
-      local linePos = ImGui.GetCursorScreenPos()
-      if linePos.Y<(cursorStartPos.Y+childMax.Y) and linePos.Y>cursorStartPos.Y then
-        table.insert(separators, ImGui.GetCursorScreenPos())
-      end
-    end
-
-    for i = #item.sorted.DataValues, 1, -1 do
-      local key = item.sorted.DataValues[i]
-      local value = item.DataValues[key]
-      if value == nil then
-        item.sorted.DataValues[i] = nil
-      else
-        ImGui.TableNextRow()
-        ImGui.TableSetColumnIndex(0)
-        local changed, newValue = ImGui.Checkbox("##" .. key .. "_lootCriteria",
-          criteriaObject.DataValues[key] ~= nil or false)
-        if changed then
-          if newValue == true then
-            criteriaObject.DataValues[key] = value
-          else
-            criteriaObject.DataValues[key] = nil
-          end
-          sortLootEditor(item)
-        end
-
-        ImGui.BeginDisabled(disabled)
-
-        ImGui.TableSetColumnIndex(1)
-        ImGui.Text(key)
-        ImGui.TableNextColumn()
-        comparatorRender(comparators, criteriaObject, "DataValues", key)
-
-        if enumCombo(item, "DataValues", key, value) then
-        else
-          ImGui.SetNextItemWidth(-1)
-          local changed, newValue = ImGui.InputInt("##" .. key, value)
-          if changed then
-            criteriaObject.DataValues[key] = newValue
-          end
-        end
-        ImGui.EndDisabled()
-      end
-    end
-
-    if #item.sorted.DataValues > 0 then
-      ImGui.TableNextRow()
-      ImGui.TableSetColumnIndex(0)
-      local linePos = ImGui.GetCursorScreenPos()
-      if linePos.Y<(cursorStartPos.Y+childMax.Y) and linePos.Y>cursorStartPos.Y then
-        table.insert(separators, ImGui.GetCursorScreenPos())
-      end
-    end
-
-    for i = #item.sorted.Int64Values, 1, -1 do
-      local key = item.sorted.Int64Values[i]
-      local value = item.Int64Values[key]
-      if value == nil then
-        item.sorted.Int64Values[i] = nil
-      else
-        ImGui.TableNextRow()
-        ImGui.TableSetColumnIndex(0)
-        local changed, newValue = ImGui.Checkbox("##" .. key .. "_lootCriteria",
-          criteriaObject.Int64Values[key] ~= nil or false)
-        if changed then
-          if newValue == true then
-            criteriaObject.Int64Values[key] = value
-          else
-            criteriaObject.Int64Values[key] = nil
-          end
-          sortLootEditor(item)
-        end
-        ImGui.BeginDisabled(disabled)
-
-        ImGui.TableSetColumnIndex(1)
-        ImGui.Text(key)
-        ImGui.TableNextColumn()
-        comparatorRender(comparators, criteriaObject, "Int64Values", key)
-
-        if enumCombo(item, "Int64Values", key, value) then
-        else
-          ImGui.SetNextItemWidth(-1)
-          local changed, newValue = ImGui.InputDouble("##" .. key, value, 10, 100,"%.0f")
-          if changed then
-            criteriaObject.Int64Values[key] = newValue
-          end
-        end
-        ImGui.EndDisabled()
-      end
-    end
-
-    if #item.sorted.Int64Values > 0 then
-      ImGui.TableNextRow()
-      ImGui.TableSetColumnIndex(0)
-      local linePos = ImGui.GetCursorScreenPos()
-      if linePos.Y<(cursorStartPos.Y+childMax.Y) and linePos.Y>cursorStartPos.Y then
-        table.insert(separators, ImGui.GetCursorScreenPos())
-      end
-    end
-
-    for i = #item.sorted.FloatValues, 1, -1 do
-      local key = item.sorted.FloatValues[i]
-      local value = item.FloatValues[key]
-      if value == nil then
-        item.sorted.FloatValues[i] = nil
-      else
-        ImGui.TableNextRow()
-        ImGui.TableSetColumnIndex(0)
-        local changed, newValue = ImGui.Checkbox("##" .. key .. "_lootCriteria",
-          criteriaObject.FloatValues[key] ~= nil or false)
-        if changed then
-          if newValue == true then
-            criteriaObject.FloatValues[key] = value
-          else
-            criteriaObject.FloatValues[key] = nil
-          end
-          sortLootEditor(item)
-        end
-        ImGui.BeginDisabled(disabled)
-
-        ImGui.TableSetColumnIndex(1)
-        ImGui.Text(extraEnums.FloatValues[key])
-        ImGui.TableNextColumn()
-        comparatorRender(comparators, criteriaObject, "FloatValues", key)
-
-        if enumCombo(item, "FloatValues", key, value) then
-        else
-          ImGui.SetNextItemWidth(-1)
-          local changed, newValue = ImGui.InputFloat("##" .. key, value, .01, 0.1)
-          if changed then
-            criteriaObject.FloatValues[key] = newValue
-          end
-        end
-        ImGui.EndDisabled()
-      end
-    end
-
-    if #item.sorted.FloatValues > 0 then
-      ImGui.TableNextRow()
-      ImGui.TableSetColumnIndex(0)
-      local linePos = ImGui.GetCursorScreenPos()
-      if linePos.Y<(cursorStartPos.Y+childMax.Y) and linePos.Y>cursorStartPos.Y then
-        table.insert(separators, ImGui.GetCursorScreenPos())
-      end
-    end
-
-    for i = #item.sorted.StringValues, 1, -1 do
-      local key = item.sorted.StringValues[i]
-      local value = item.StringValues[key]
-      if value == nil then
-        item.sorted.StringValues[i] = nil
-      else
-        if key ~= "HeritageGroup" then
           ImGui.TableNextRow()
           ImGui.TableSetColumnIndex(0)
+          
           local changed, newValue = ImGui.Checkbox("##" .. key .. "_lootCriteria",
-            criteriaObject.StringValues[key] ~= nil or false)
+          criteriaObject[valuesKey][key] ~= nil or false)
           if changed then
             if newValue == true then
-              criteriaObject.StringValues[key] = value
+              criteriaObject[valuesKey][key] = value
             else
-              criteriaObject.StringValues[key] = nil
+              criteriaObject[valuesKey][key] = nil
             end
             sortLootEditor(item)
           end
           ImGui.BeginDisabled(disabled)
 
           ImGui.TableSetColumnIndex(1)
-          ImGui.Text(extraEnums.StringValues[key])
+          ImGui.Text(ExtraEnums[valuesKey][key])
           ImGui.TableNextColumn()
-          comparatorRender(comparators, criteriaObject, "StringValues", key)
+          comparatorRender(comparators, criteriaObject, valuesKey, key)
 
-          if enumCombo(item, "StringValues", key, value) then
+          if enumCombo(item, valuesKey, key, value) then
           else
             ImGui.SetNextItemWidth(-1)
-            local changed, newValue = ImGui.InputText("##" .. key, value, 64)
+            local changed, newValue = imguiInputs[valuesKey](key,value)
             if changed then
-              criteriaObject.StringValues[key] = newValue
+              criteriaObject[valuesKey][key] = newValue
             end
           end
           ImGui.EndDisabled()
         end
       end
+
+      if #item.sorted[valuesKey] > 0 then
+        ImGui.TableNextRow()
+        ImGui.TableSetColumnIndex(0)
+        local linePos = ImGui.GetCursorScreenPos()
+        if linePos.Y<(cursorStartPos.Y+childMax.Y) and linePos.Y>cursorStartPos.Y then
+          table.insert(separators, ImGui.GetCursorScreenPos())
+        end
+      end
     end
+
     ImGui.EndTable()
-    --ImGui.PopClipRect()
     local scrollbarY = ImGui.GetScrollMaxY()>0
     ImGui.EndChild()
     
@@ -613,6 +427,7 @@ local function renderLootRule()
   end
   ImGui.End()
 end
+
 function renderLootEditor()
   if lootEditor then lootEditor.Dispose() end
   lootEditor = views.Huds.CreateHud("LootEditor")
