@@ -1010,7 +1010,7 @@ bars({
       -- Input box for mob name
       ImGui.PushItemWidth(-1)
       local inputChanged, newMobName = ImGui.InputText("###MobNameInput", bar.mobToSearch, 24,
-        _imgui.ImGuiInputTextFlags.None)
+        _imgui.ImGuiInputTextFlags.AutoSelectAll)
       ImGui.PopItemWidth()
 
       local isInputActive = ImGui.IsItemActive()
