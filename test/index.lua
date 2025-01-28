@@ -13,9 +13,7 @@ local lootRules = {}
 --- enum stuff
 -----------------------------------------------------
 
-if game.ServerName=="Daralet" then 
-  require("DaraletGlobals")
-end
+require("DaraletGlobals")
 
 local enumMasks = {
   ItemUseable = UsableType,
