@@ -45,7 +45,7 @@ WieldRequirements.FromValue = function(value)
     end
   end
 end
-Level = WieldRequirements
+--Level = WieldRequirements
 Training = WieldRequirements
 WieldRequirements2 = WieldRequirements
 
