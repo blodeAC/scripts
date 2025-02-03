@@ -1,157 +1,66 @@
----@class D_SigilTrinketBonusStat: EnumConst
----@class D_SigilTrinketBonusStat‎
----@field GearCrit D_SigilTrinketBonusStat -- None
----@field GearCritDamage D_SigilTrinketBonusStat -- TODO
----@field GearDamageResist D_SigilTrinketBonusStat -- TODO
----@field GearMaxHealth D_SigilTrinketBonusStat -- TODO
----@field WardLevel D_SigilTrinketBonusStat -- TODO
----@type D_SigilTrinketBonusStat
-D_SigilTrinketBonusStat = { }
-D_SigilTrinketBonusStat.GetValues = function()
-  return {"GearCrit","GearCritDamage","GearDamageResist","GearMaxHealth","WardLevel"}
+D_SigilTrinketBonusStat = {None=0, GearCrit=1,GearCritDamage=2,GearDamageResist=3,GearMaxHealth=4,WardLevel=5}
+D_SigilTrinketBonusStat.GetValues = function(value)
+  if value then
+    for name,enumVal in pairs(D_SigilTrinketBonusStat) do
+      if enumVal==value then
+        return enumVal
+      end
+    end
+  else
+    return {"None", "GearCrit","GearCritDamage","GearDamageResist","GearMaxHealth","WardLevel"}
+  end
 end
 D_SigilTrinketBonusStat.FromValue = function(value)
-  for i,val in ipairs(D_SigilTrinketBonusStat.GetValues()) do
-    if val==value then
-      return i
-    end
-  end
+  return D_SigilTrinketBonusStat.GetValues(value)
 end
 
----@class WieldRequirements: EnumConst
----@class WieldRequirements‎
----@field Invalid WieldRequirements
----@field Skill WieldRequirements
----@field RawSkill WieldRequirements
----@field Attrib WieldRequirements
----@field RawAttrib WieldRequirements
----@field SecondaryAttrib WieldRequirements
----@field RawSecondaryAttrib WieldRequirements
----@field Level WieldRequirements
----@field Training WieldRequirements
----@field IntStat WieldRequirements
----@field BoolStat WieldRequirements
----@field CreatureType WieldRequirements
----@field HeritageType WieldRequirements
----@type WieldRequirements
-WieldRequirements = { }
-WieldRequirements.GetValues = function()
-  return {"Invalid","SkillId","SkillId","AttributeId","AttributeId","VitalId","VitalId","Level","Training","IntId","BoolId","CreatureType","HeritageGroup"}
-end
-WieldRequirements.FromValue = function(value)
-  for i,val in ipairs(WieldRequirements.GetValues()) do
-    if val==value then
-      return i-1
-    end
-  end
-end
---Level = WieldRequirements
-Training = WieldRequirements
-WieldRequirements2 = WieldRequirements
 
----@class D_ArmorWeightClass: EnumConst
----@class D_ArmorWeightClass‎
----@field None D_ArmorWeightClass
----@field Light D_ArmorWeightClass
----@field Medium D_ArmorWeightClass
----@field Heavy D_ArmorWeightClass
----@type D_ArmorWeightClass
-D_ArmorWeightClass = { }
-D_ArmorWeightClass.GetValues = function()
-  return {"None","Light","Medium","Heavy"}
+D_ArmorWeightClass = {None=0,Cloth=1,Light=2,Medium=3,Heavy=4}
+D_ArmorWeightClass.GetValues = function(value)
+  if value then
+    for name,enumVal in pairs(D_ArmorWeightClass) do
+      if enumVal==value then
+        return enumVal
+      end
+    end
+  else
+    return  {"None","Cloth","Light","Medium","Heavy"}
+  end
 end
 D_ArmorWeightClass.FromValue = function(value)
-  for i,val in ipairs(D_ArmorWeightClass.GetValues()) do
-    if val==value then
-      return i-1
-    end
-  end
+  return D_ArmorWeightClass.GetValues(value)
 end
 
----@class D_ArmorStyle: EnumConst
----@class D_ArmorStyle‎
----@field None D_ArmorStyle
----@field Cloth D_ArmorStyle
----@field Leather D_ArmorStyle
----@field StuddedLeather D_ArmorStyle
----@field Chainmail D_ArmorStyle
----@field Platemail D_ArmorStyle
----@field Scalemail D_ArmorStyle
----@field Yoroi D_ArmorStyle
----@field Celdon D_ArmorStyle
----@field Amuli D_ArmorStyle
----@field Koujia D_ArmorStyle
----@field Covenant D_ArmorStyle
----@field Lorica D_ArmorStyle
----@field Nariyid D_ArmorStyle
----@field Chiran D_ArmorStyle
----@field OlthoiCeldon D_ArmorStyle
----@field OlthoiAmuli D_ArmorStyle
----@field OlthoiKoujia D_ArmorStyle
----@field OlthoiArmor D_ArmorStyle
----@field Buckler D_ArmorStyle
----@field SmallShield D_ArmorStyle
----@field StandardShield D_ArmorStyle
----@field LargeShield D_ArmorStyle
----@field TowerShield D_ArmorStyle
----@field CovenantShiel D_ArmorStyle
----@type D_ArmorStyle
-D_ArmorStyle = { }
-D_ArmorStyle.GetValues = function()
-  return {"None","Cloth","Leather","StuddedLeather","Chainmail","Platemail","Scalemail","Yoroi","Celdon","Amuli","Koujia","Covenant","Lorica","Nariyid","Chiran","OlthoiCeldon","OlthoiAmuli","OlthoiKoujia","OlthoiArmor","Buckler","SmallShield","StandardShield","LargeShield","TowerShield","CovenantShield"}
+D_ArmorStyle = {None=0,Cloth=1,Leather=2,StuddedLeather=3,Chainmail=4,Platemail=5,Scalemail=6,Yoroi=7,Celdon=8,Amuli=9,Koujia=10,Covenant=11,Lorica=12,Nariyid=13,Chiran=14,OlthoiCeldon=15,OlthoiAmuli=16,OlthoiKoujia=17,OlthoiArmor=18,Buckler=19,SmallShield=20,StandardShield=21,LargeShield=22,TowerShield=23,CovenantShield=24}
+D_ArmorStyle.GetValues = function(value)
+  if value then
+    for name,enumVal in pairs(D_ArmorStyle) do
+      if enumVal==value then
+        return enumVal
+      end
+    end
+  else
+    return {"None","Cloth","Leather","StuddedLeather","Chainmail","Platemail","Scalemail","Yoroi","Celdon","Amuli","Koujia","Covenant","Lorica","Nariyid","Chiran","OlthoiCeldon","OlthoiAmuli","OlthoiKoujia","OlthoiArmor","Buckler","SmallShield","StandardShield","LargeShield","TowerShield","CovenantShield"}
+  end
 end
 D_ArmorStyle.FromValue = function(value)
-  for i,val in ipairs(D_ArmorStyle.GetValues()) do
-    if val==value then
-      return i-1
-    end
-  end
+  return D_ArmorStyle.GetValues(value)
 end
 
----@class D_WeaponSubtype: EnumConst
----@class D_WeaponSubtype‎
----@field Undef D_WeaponSubtype
----@field AxeLarge D_WeaponSubtype
----@field AxeMedium D_WeaponSubtype
----@field AxeSmall D_WeaponSubtype
----@field DaggerLarge D_WeaponSubtype
----@field DaggerSmall D_WeaponSubtype
----@field MaceLarge D_WeaponSubtype
----@field MaceMedium D_WeaponSubtype
----@field MaceSmall D_WeaponSubtype
----@field StaffLarge D_WeaponSubtype
----@field StaffMedium D_WeaponSubtype
----@field StaffSmall D_WeaponSubtype
----@field SpearLarge D_WeaponSubtype
----@field SpearMedium D_WeaponSubtype
----@field SpearSmall D_WeaponSubtype
----@field SwordLarge D_WeaponSubtype
----@field SwordMedium D_WeaponSubtype
----@field SwordSmall D_WeaponSubtype
----@field Ua D_WeaponSubtype
----@field TwohandAxe D_WeaponSubtype
----@field TwohandMace D_WeaponSubtype
----@field TwohandSpear D_WeaponSubtype
----@field TwohandSword D_WeaponSubtype
----@field AtlatlLarge D_WeaponSubtype
----@field AtlatlSmall D_WeaponSubtype
----@field BowLarge D_WeaponSubtype
----@field BowSmall D_WeaponSubtype
----@field CrossbowLarge D_WeaponSubtype
----@field CrossbowSmall D_WeaponSubtype
----@field Caster D_WeaponSubtype
----@field CovenantShield D_WeaponSubtype
----@type D_WeaponSubtype
-D_WeaponSubtype = { }
-D_WeaponSubtype.GetValues = function()
-  return {"Undef","AxeLarge","AxeMedium","AxeSmall","DaggerLarge","DaggerSmall","MaceLarge","MaceMedium","MaceSmall","StaffLarge","StaffMedium","StaffSmall","SpearLarge","SpearMedium","SpearSmall","SwordLarge","SwordMedium","SwordSmall","Ua","TwohandAxe","TwohandMace","TwohandSpear","TwohandSword","AtlatlLarge","AtlatlSmall","BowLarge","BowSmall","CrossbowLarge","CrossbowSmall","Caster"}
+D_WeaponSubtype = {Undef=0,AxeLarge=1,AxeMedium=2,AxeSmall=3,DaggerLarge=4,DaggerSmall=5,MaceLarge=6,MaceMedium=7,MaceSmall=8,StaffLarge=9,StaffMedium=10,StaffSmall=11,SpearLarge=12,SpearMedium=13,SpearSmall=14,SwordLarge=15,SwordMedium=16,SwordSmall=17,Ua=18,TwohandAxe=19,TwohandMace=20,TwohandSpear=21,TwohandSword=22,AtlatlLarge=23,AtlatlSmall=24,BowLarge=25,BowSmall=26,CrossbowLarge=27,CrossbowSmall=28,Caster=29}
+D_WeaponSubtype.GetValues = function(value)
+  if value then
+    for name,enumVal in pairs(D_WeaponSubtype) do
+      if enumVal==value then
+        return enumVal
+      end
+    end
+  else
+    return  {"Undef","AxeLarge","AxeMedium","AxeSmall","DaggerLarge","DaggerSmall","MaceLarge","MaceMedium","MaceSmall","StaffLarge","StaffMedium","StaffSmall","SpearLarge","SpearMedium","SpearSmall","SwordLarge","SwordMedium","SwordSmall","Ua","TwohandAxe","TwohandMace","TwohandSpear","TwohandSword","AtlatlLarge","AtlatlSmall","BowLarge","BowSmall","CrossbowLarge","CrossbowSmall","Caster"}
+  end
 end
 D_WeaponSubtype.FromValue = function(value)
-  for i,val in ipairs(D_WeaponSubtype.GetValues()) do
-    if val==value then
-      return i-1
-    end
-  end
+  return D_WeaponSubtype.GetValues(value)
 end
 
 ExtraEnums = {
