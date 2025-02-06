@@ -379,7 +379,6 @@ local hudCreate = function(bar)
         ImGui.PopStyleVar()
       end
 
-      -- Save position/size when Ctrl is pressed.
       if ImGui.GetIO().KeyCtrl then
         local currentPos = ImGui.GetWindowPos() - Vector2.new(0, ImGui.GetFontSize() / fontScale)
         local currentContentSize = ImGui.GetWindowSize() - Vector2.new(0, -ImGui.GetFontSize() / fontScale)
@@ -389,12 +388,13 @@ local hudCreate = function(bar)
             currentContentSize.Y ~= (bar.size and bar.size.Y or -1) then
           bar.position = currentPos
           bar.size = currentContentSize
+
           if bar.renderContext ~= nil then
             bar[bar.renderContext] = {
               position = Vector2.new(bar.position.X, bar.position.Y),
               size = Vector2.new(
                 bar.size.X, bar.size.Y)
-            }
+              }
             SaveBarSettings(bar, bar.renderContext,
               { position = { X = bar.position.X, Y = bar.position.Y }, size = { X = bar.size.X, Y = bar.size.Y } })
           else
@@ -442,17 +442,6 @@ local function renderBars(bar)
     bar.settingsTreeClose = nil
   end
   if ImGui.CollapsingHeader(bar.name) then
-    --[[local maxX=0
-    bar.settingX=0
-    for settingName, setting in pairs(bar.settings) do
-      local X=ImGui.CalcTextSize(settingName).X
-      if X>maxX then
-        bar.settingX=X
-        maxX=X
-      end
-    end
-    local style=ImGui.GetStyle()
-    bar.settingX=bar.settingX-style.ItemSpacing.X-style.ItemInnerSpacing.X-style.FramePadding.X-style.CellPadding.X-style.ColumnsMinSpacing-style.IndentSpacing--]]
     for settingName, setting in pairs(bar.settings) do
       ImGui.Text(settingName)
       ImGui.SameLine()
