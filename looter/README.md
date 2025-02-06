@@ -4,4 +4,4 @@ https://gitlab.com/utilitybelt/utilitybelt.gitlab.io/-/packages/32221265
 
 https://gitlab.com/utilitybelt/utilitybelt.scripting/-/releases
 
-Middle click to disable a rule; right click to rename
+Middle click to disable a rule; right click to rename; + to copy and hold Ctrl and click X to delete
