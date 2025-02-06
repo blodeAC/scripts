@@ -3,7 +3,7 @@ D_SigilTrinketBonusStat.GetValues = function(value)
   if value then
     for name,enumVal in pairs(D_SigilTrinketBonusStat) do
       if enumVal==value then
-        return enumVal
+        return name
       end
     end
   else
@@ -20,7 +20,7 @@ D_ArmorWeightClass.GetValues = function(value)
   if value then
     for name,enumVal in pairs(D_ArmorWeightClass) do
       if enumVal==value then
-        return enumVal
+        return name
       end
     end
   else
@@ -36,7 +36,7 @@ D_ArmorStyle.GetValues = function(value)
   if value then
     for name,enumVal in pairs(D_ArmorStyle) do
       if enumVal==value then
-        return enumVal
+        return name
       end
     end
   else
@@ -52,7 +52,7 @@ D_WeaponSubtype.GetValues = function(value)
   if value then
     for name,enumVal in pairs(D_WeaponSubtype) do
       if enumVal==value then
-        return enumVal
+        return name
       end
     end
   else
@@ -308,6 +308,8 @@ ExtraEnums = {
       end
       if not k_num then
         return k
+      elseif k_num == 10002 then
+        return "D_HotspotImmunityTimestamp"
       elseif k_num < 199 and t[k_num-171]~=nil then
         return t[k_num-171]
       elseif t[k_num-19999+27]~=nil then

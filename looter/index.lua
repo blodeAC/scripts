@@ -11,6 +11,37 @@ local lootRuleHolder --loot rule window
 local copyAndSort
 
 -----------------------------------------------------
+--- helpers
+-----------------------------------------------------
+
+local function moveElementUp(t, index)
+  if index > 1 then -- Ensure it's not already at the top
+    local temp = t[index - 1]
+    t[index - 1] = t[index]
+    t[index] = temp
+  end
+end
+
+local function moveElementDown(t, index)
+  if index < #t then -- Ensure it's not already at the bottom
+    local temp = t[index + 1]
+    t[index + 1] = t[index]
+    t[index] = temp
+  end
+end
+
+local function removeElement(t, index)
+  for i = index, #t - 1 do
+    t[i] = t[i + 1] -- Shift elements left
+  end
+  t[#t] = nil       -- Remove the last element
+end
+
+local function generateUid()
+  return tostring(os.time()) .. string.gsub(tostring(os.clock()), "%.", "")
+end
+
+-----------------------------------------------------
 --- enum stuff
 -----------------------------------------------------
 
@@ -33,7 +64,12 @@ for i, enum in ipairs(allEnums) do
   end
   table.insert(sortedEnums, sorted)
 end
-
+for i,val in ipairs(sortedEnums[6]) do
+  if val=="HeritageGroup" then
+    removeElement(sortedEnums[6],i)
+    break
+  end
+end
 -- Definition for different values of WieldRequirements
 WieldRequirements = {
   Invalid = 0,
@@ -164,32 +200,6 @@ enumMasks = {
   D_ArmorStyle = D_ArmorStyle,
   D_WeaponSubtype = D_WeaponSubtype
 }
------------------------------------------------------
---- helpers
------------------------------------------------------
-
-local function moveElementUp(t, index)
-  if index > 1 then -- Ensure it's not already at the top
-    local temp = t[index - 1]
-    t[index - 1] = t[index]
-    t[index] = temp
-  end
-end
-
-local function moveElementDown(t, index)
-  if index < #t then -- Ensure it's not already at the bottom
-    local temp = t[index + 1]
-    t[index + 1] = t[index]
-    t[index] = temp
-  end
-end
-
-local function removeElement(t, index)
-  for i = index, #t - 1 do
-    t[i] = t[i + 1] -- Shift elements left
-  end
-  t[#t] = nil       -- Remove the last element
-end
 
 -----------------------------------------------------
 --- events
@@ -244,10 +254,11 @@ local function evaluateLoot(item)
           end
         end
       end
-      if not Regex.IsMatch(item.spells or "", ruleItem.spells or "") then
+      if ruleItem.spells~="" and not Regex.IsMatch(item.spells or "", ruleItem.spells or "") then
         lootable = false
       end
       if lootable then
+        ruleItem.totalFound = (ruleItem.totalFound or 0) + 1
         return ruleItem.name
       end
     end
@@ -270,7 +281,7 @@ local function loot(itemData,winningLootRule,weenie)
   end
 
   lootActionOptions.TimeoutMilliseconds = actionQueueCount*1000
-  game.Actions.ObjectMove(itemData.id, game.CharacterId, 0, false, lootActionOptions, 
+  game.Actions.ObjectMove(itemData.id, game.CharacterId, 0, true, lootActionOptions, 
   function(objectMoveAction)
     if objectMoveAction.Success then
       if weenie.Value(BoolId.Inscribable) then
@@ -282,9 +293,6 @@ local function loot(itemData,winningLootRule,weenie)
   end)
 end
 
-local function generateUid()
-  return tostring(os.time()) .. string.gsub(tostring(os.clock()), "%.", "")
-end
 -- Generate itemdata for each inspected object and loot, if on opened corpse
 game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
   local weenie = game.World.Get(e.Data.ObjectId)
@@ -305,7 +313,6 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
       FloatValues = {},
       StringValues = {},
     },
-    spells = "",
     AndOr = {}
   }
 
@@ -333,6 +340,7 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
       return a > b
     end)
   end
+  itemData.StringValues["HeritageGroup"]=nil
 
   if (game.World.Selected ~= nil and game.World.Selected.Id == e.Data.ObjectId) then
     inspectedItem = itemData
@@ -491,7 +499,7 @@ local function loadLootProfile(server, character)
         lootRules[i] = copyAndSort(rule)
       end
     else
-      return "No settings found for server or character. Capitalization matters"
+      return "No settings found for server or character."
     end
   end
 end
@@ -678,7 +686,7 @@ copyAndSort = function(item)
   local comparator = (item.comparator and deepcopy(item.comparator)) or {}
 
   local newItem = deepcopy(item)
-  newItem.uid = tostring(os.time()) .. tostring(os.clock()):gsub("%.", "")
+  newItem.uid = generateUid()
   newItem.comparator = comparator
 
   newItem.sorted = {}
@@ -709,23 +717,31 @@ end
 
 -- ImGui input type determined by value type
 local imguiInputs = {
-  IntValues = function(key, value, item)
+  IntValues = function(key, value, item, disabled)
     return ImGui.InputInt("##" .. key .. item.uid, value, 1, 10)
   end,
-  BoolValues = function(key, value, item)
+  BoolValues = function(key, value, item, disabled)
     return ImGui.Checkbox("##" .. key .. item.uid, value)
   end,
-  DataValues = function(key, value, item)
+  DataValues = function(key, value, item, disabled)
     return ImGui.InputInt("##" .. key .. item.uid, value)
   end,
-  Int64Values = function(key, value, item)
+  Int64Values = function(key, value, item, disabled)
     return ImGui.InputDouble("##" .. key .. item.uid, value, 10, 100, "%.0f")
   end,
-  FloatValues = function(key, value, item)
+  FloatValues = function(key, value, item, disabled)
     return ImGui.InputFloat("##" .. key .. item.uid, value, .01, 0.1)
   end,
-  StringValues = function(key, value, item)
-    return ImGui.InputText("##" .. key .. item.uid, value, 64)
+  StringValues = function(key, value, item, disabled)
+    if disabled then
+      local availX = ImGui.GetWindowContentRegionMax().X
+      ImGui.PushTextWrapPos(availX)
+      ImGui.TextWrapped(string.gsub(value,"%%","%%%%"))
+      ImGui.PopTextWrapPos()
+      return false, false
+    else
+      return ImGui.InputText("##" .. key .. item.uid,value,144)
+    end
   end
 }
 
@@ -735,15 +751,12 @@ local imguiInputs = {
 
 -- Create main inspection window
 hud = views.Huds.CreateHud("LootInspect", 0x06001A8A)
-hud.DontDrawDefaultWindow = true
 hud.Visible = true
-
 hud.OnHide.Add(function()
   trackWindowState("hud")
 end)
 hud.OnPreRender.Add(function()
   ImGui.SetNextWindowSizeConstraints(Vector2.new(100, 100), Vector2.new(9999, 9999))
-  hud.WindowSettings = _imgui.ImGuiWindowFlags.NoCollapse
 end)
 
 
@@ -857,7 +870,7 @@ local function renderTab(item, criteriaObject, disabled)
                 changeMonitor = changeMonitor or enumChange
               else
                 ImGui.SetNextItemWidth(-1)
-                local changed, newValue = imguiInputs[valuesKey](key, value, item)
+                local changed, newValue = imguiInputs[valuesKey](key, value, item, disabled)
                 if changed then
                   criteriaObject[valuesKey][key] = newValue
                   changeMonitor = true
@@ -875,9 +888,13 @@ local function renderTab(item, criteriaObject, disabled)
       if item.spells and currentRow >= visibleStartRow and currentRow <= visibleEndRow then
         ImGui.TableNextRow()
         ImGui.TableSetColumnIndex(0)
-        local changed, newValue = ImGui.Checkbox("##spells_lootCriteria" .. item.uid, criteriaObject.spells ~= nil)
+        local changed, newValue = ImGui.Checkbox("##spells_lootCriteria" .. item.uid, criteriaObject.spells~=nil)
         if changed then
-          criteriaObject.spells = newValue and item.spells or nil
+          if newValue == true then
+            criteriaObject.spells = item.spells or ""
+          else
+            criteriaObject.spells = nil
+          end
           changeMonitor = true
         end
 
@@ -886,13 +903,13 @@ local function renderTab(item, criteriaObject, disabled)
         ImGui.Text("Spells")
         ImGui.TableNextColumn()
 
-        if not disabled then
+        if not disabled then 
           ImGui.Text("         ==")
           ImGui.TableNextColumn()
         end
 
         ImGui.SetNextItemWidth(-1)
-        local changed, newValue = ImGui.InputText("##spells" .. item.uid, item.spells or "", 64)
+        local changed, newValue = ImGui.InputText("##spells" .. item.uid, item.spells or "", 144)
         if changed then
           criteriaObject.spells = newValue
           changeMonitor = true
@@ -937,54 +954,49 @@ end
 populateImport()
 -- Render main inspection window
 hud.OnRender.Add(function()
-  if ImGui.Begin("Last Inspected Item", hud.WindowSettings) then
-    if inspectedItem == nil then
-      ImGui.Text("No items inspected yet.")
-    else
-      if ImGui.BeginTabBar("InspectedItemTabs") then
-        if ImGui.BeginTabItem(inspectedItem.name) then
-          renderTab(inspectedItem, inspectedItem.lootCriteria, true)
-          if ImGui.Button("Template loot rule") then
-            local itemCopy = copyAndSort(inspectedItem)
-            itemCopy.isShown = true
-            for _i, _rule in ipairs(lootRules) do
-              _rule.isShown = false
-            end
-            itemCopy.uid = generateUid()
-            table.insert(lootRules, itemCopy)
-            saveLootProfile()
+  if inspectedItem == nil then
+    ImGui.Text("No items inspected yet.")
+  else
+    if ImGui.BeginTabBar("InspectedItemTabs") then
+      if ImGui.BeginTabItem(inspectedItem.name) then
+        renderTab(inspectedItem, inspectedItem.lootCriteria, true)
+        if ImGui.Button("Template loot rule") then
+          local itemCopy = copyAndSort(inspectedItem)
+          itemCopy.isShown = true
+          for _i, _rule in ipairs(lootRules) do
+            _rule.isShown = false
           end
-          local buttonSize=ImGui.GetItemRectSize()
-          ImGui.SameLine()
-          ImGui.SetCursorPosX(ImGui.GetCursorPosX()+buttonSize.X)
-          ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X - (ImGui.GetCursorScreenPos().X-ImGui.GetWindowPos().X)*2.5)
-          local changed,newCharIndex = ImGui.Combo("##importServerCharacter",importIndex,availableToImport,#availableToImport)
-          if changed or not importProfile then
-            importIndex=newCharIndex or 0
-            importProfile=string.gsub(availableToImport[newCharIndex+1]," > ",",")
-          end
-          ImGui.SameLine()
-          if ImGui.Button("Import Settings##importsettings",buttonSize) then
-            local server, character = importProfile:match("([^,]+),([^,]+)")
-            loadLootProfile(server,character)
-            saveLootProfile()
-          end
-
-          ImGui.EndTabItem()
+          itemCopy.uid = generateUid()
+          table.insert(lootRules, itemCopy)
+          saveLootProfile()
         end
-        ImGui.EndTabBar()
+        local buttonSize=ImGui.GetItemRectSize()
+        ImGui.SameLine()
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX()+buttonSize.X)
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X - (ImGui.GetCursorScreenPos().X-ImGui.GetWindowPos().X)*2.5)
+        local changed,newCharIndex = ImGui.Combo("##importServerCharacter",importIndex,availableToImport,#availableToImport)
+        if changed then
+          importIndex=newCharIndex or 0 --??
+          importProfile=string.gsub(availableToImport[newCharIndex+1]," > ",",")
+        end
+        ImGui.SameLine()
+        if ImGui.Button("Import Settings##importsettings",buttonSize) then
+          local server, character = importProfile:match("([^,]+),([^,]+)")
+          loadLootProfile(server,character)
+          saveLootProfile()
+        end
+
+        ImGui.EndTabItem()
       end
+      ImGui.EndTabBar()
     end
-    trackWindowState("hud")
-    ImGui.End()
   end
+  trackWindowState("hud")
 end)
 
 -- Create loot rules window
 lootRuleHolder = views.Huds.CreateHud("*LootRuleHolder")
-lootRuleHolder.DontDrawDefaultWindow = true
 lootRuleHolder.Visible = true
-lootRuleHolder.WindowSettings = _imgui.ImGuiWindowFlags.NoCollapse
 lootRuleHolder.OnHide.Add(function()
   trackWindowState("lootRuleHolder")
 end)
@@ -1028,187 +1040,196 @@ local hintText = "Right-click to rename"
 lootRuleHolder.OnRender.Add(function()
   lastFilterCount = filterCounter
   filterCounter = 0
-  if ImGui.Begin("Loot Rules", lootRuleHolder.WindowSettings) then
-    if ImGui.BeginTable("ListTable", 1, _imgui.ImGuiTableFlags.Borders) then
-      -- Table header
-      ImGui.TableSetupColumn("Name", _imgui.ImGuiTableColumnFlags.WidthStretch)
-      ImGui.TableHeadersRow()
+  if ImGui.BeginTable("ListTable", 1, _imgui.ImGuiTableFlags.Borders) then
+    -- Table header
+    ImGui.TableSetupColumn("Name", _imgui.ImGuiTableColumnFlags.WidthStretch)
+    ImGui.TableHeadersRow()
 
-      ImGui.SetCursorScreenPos(Vector2.new(ImGui.GetItemRectMax().X - ImGui.CalcTextSize(hintText).X,
-        ImGui.GetItemRectMin().Y + ImGui.GetStyle().FramePadding.Y))
-      ImGui.PushStyleColor(_imgui.ImGuiCol.Text, 0x77777777)
-      ImGui.Text(hintText)
-      ImGui.PopStyleColor()
-      if ImGui.IsItemHovered() then
-        hintText = ""
-      end
-      local changeMonitor = false
-      for i, rule in ipairs(lootRules) do
-        ImGui.TableNextRow()
-        ImGui.TableSetColumnIndex(0)
+    ImGui.SetCursorScreenPos(Vector2.new(ImGui.GetItemRectMax().X - ImGui.CalcTextSize(hintText).X,
+      ImGui.GetItemRectMin().Y + ImGui.GetStyle().FramePadding.Y))
+    ImGui.PushStyleColor(_imgui.ImGuiCol.Text, 0x77777777)
+    ImGui.Text(hintText)
+    ImGui.PopStyleColor()
+    if ImGui.IsItemHovered() then
+      hintText = ""
+    end
+    local changeMonitor = false
+    for i, rule in ipairs(lootRules) do
+      ImGui.TableNextRow()
+      ImGui.TableSetColumnIndex(0)
 
-        local cursorPos = ImGui.GetCursorScreenPos()
-        local isClicked
+      local cursorPos = ImGui.GetCursorScreenPos()
+      local isClicked
 
-        if rule.isRenaming then
-          -- Directly editing the name inline
-          ImGui.SetKeyboardFocusHere()
-          local changed, newValue = ImGui.InputText("##editLootRuleName" .. rule.uid, rule.name, 64,
-            _imgui.ImGuiInputTextFlags.EnterReturnsTrue)
-          if changed and newValue ~= "" then
-            rule.name = newValue
-            changeMonitor = true
-          end
-
-          -- When the user presses Enter, or if the input loses focus, stop editing
-          if changed or ImGui.IsItemDeactivated() then
-            rule.isRenaming = false
-          end
-        else
-          local buttonSize = Vector2.new(18, 18)
-          isClicked = ImGui.Selectable(rule.name .. "##" .. rule.uid, false, _imgui.ImGuiSelectableFlags.AllowOverlap,
-            Vector2.new(ImGui.GetColumnWidth(), ImGui.GetFrameHeight()))
-
-          if ImGui.IsItemHovered() and ImGui.IsMouseReleased(_imgui.ImGuiMouseButton.Right) then -- 1 is the right-click button
-            rule.isRenaming = true                                                               -- Trigger the renaming mode
-          elseif ImGui.IsItemHovered() and ImGui.IsMouseReleased(_imgui.ImGuiMouseButton.Middle) then
-            rule.disabled = not rule.disabled
-          elseif rule.isShown then
-            local barOptions = Vector2.new(ImGui.GetItemRectMax().X - 3 * buttonSize.X - ImGui.GetStyle().FramePadding.X,
-              ImGui.GetItemRectMax().Y - ImGui.GetItemRectSize().Y + ImGui.GetStyle().FramePadding.Y)
-            ImGui.SetCursorScreenPos(barOptions)
-            ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, Vector2.new(0, ImGui.GetStyle().ItemInnerSpacing.Y))
-            ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemSpacing, Vector2.new(0, 0))
-
-            DrawIcon(rule, 0x060028FC, buttonSize, function()
-              moveElementUp(lootRules, i)
-              changeMonitor = true
-            end)
-
-            ImGui.SameLine(0)
-            DrawIcon(rule, 0x060028FD, buttonSize, function()
-              moveElementDown(lootRules, i)
-              changeMonitor = true
-            end)
-
-            if ImGui.GetIO().KeyCtrl then
-              ImGui.SameLine(0)
-              DrawIcon(rule, 0x0600606E, buttonSize, function()
-                removeElement(lootRules, i)
-                changeMonitor = true
-              end)
-            else
-              ImGui.SameLine(0)
-              DrawIcon(rule, 0x060069EA, buttonSize, function()
-                local ruleCopy = copyAndSort(rule)
-                ruleCopy.isShown = true
-                for _i, _rule in ipairs(lootRules) do
-                  _rule.isShown = false
-                end
-                ruleCopy.uid = tostring(os.time()) .. tostring(os.clock()):gsub("%.", "")
-                table.insert(lootRules, ruleCopy)
-                changeMonitor = true
-              end)
-            end
-
-            ImGui.PopStyleVar(2)
-          end
-          if rule.disabled then
-            local textStart = Vector2.new(cursorPos.X, cursorPos.Y + ImGui.GetFontSize() / 2)
-            local textEnd = Vector2.new(textStart.X + ImGui.CalcTextSize(rule.name).X, textStart.Y)
-            ImGui.GetWindowDrawList().AddLine(textStart, textEnd, 0xFFFFFFFF)
-          end
+      local barOptions
+      if rule.isRenaming then
+        -- Directly editing the name inline
+        ImGui.SetKeyboardFocusHere()
+        local changed, newValue = ImGui.InputText("##editLootRuleName" .. rule.uid, rule.name, 64,
+          _imgui.ImGuiInputTextFlags.EnterReturnsTrue)
+        if changed and newValue ~= "" then
+          rule.name = newValue
+          changeMonitor = true
         end
 
-        -- If clicked or rule is shown, render the content
-        if isClicked then
-          rule.isShown = not rule.isShown
-          if rule.isShown then
-            for _i, _rule in ipairs(lootRules) do
-              if _rule ~= rule then
+        -- When the user presses Enter, or if the input loses focus, stop editing
+        if changed or ImGui.IsItemDeactivated() then
+          rule.isRenaming = false
+        end
+      else
+        
+        local buttonSize = Vector2.new(18, 18)
+        isClicked = ImGui.Selectable(rule.name .. "##" .. i, false, _imgui.ImGuiSelectableFlags.AllowOverlap,
+          Vector2.new(ImGui.GetColumnWidth(), ImGui.GetFrameHeight()))
+
+        if ImGui.IsItemHovered() and ImGui.IsMouseReleased(_imgui.ImGuiMouseButton.Right) then -- 1 is the right-click button
+          rule.isRenaming = true                                                               -- Trigger the renaming mode
+        elseif ImGui.IsItemHovered() and ImGui.IsMouseReleased(_imgui.ImGuiMouseButton.Middle) then
+          rule.disabled = not rule.disabled
+        elseif rule.isShown then
+          barOptions = Vector2.new(ImGui.GetItemRectMax().X - 3 * buttonSize.X - ImGui.GetStyle().FramePadding.X,
+            ImGui.GetItemRectMax().Y - ImGui.GetItemRectSize().Y + ImGui.GetStyle().FramePadding.Y)
+          ImGui.SetCursorScreenPos(barOptions)
+          ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemInnerSpacing, Vector2.new(0, ImGui.GetStyle().ItemInnerSpacing.Y))
+          ImGui.PushStyleVar(_imgui.ImGuiStyleVar.ItemSpacing, Vector2.new(0, 0))
+
+          DrawIcon(rule, 0x060028FC, buttonSize, function()
+            moveElementUp(lootRules, i)
+            changeMonitor = true
+          end)
+
+          ImGui.SameLine(0)
+          DrawIcon(rule, 0x060028FD, buttonSize, function()
+            moveElementDown(lootRules, i)
+            changeMonitor = true
+          end)
+
+          if ImGui.GetIO().KeyCtrl then
+            ImGui.SameLine(0)
+            DrawIcon(rule, 0x0600606E, buttonSize, function()
+              removeElement(lootRules, i)
+              changeMonitor = true
+            end)
+          else
+            ImGui.SameLine(0)
+            DrawIcon(rule, 0x060069EA, buttonSize, function()
+              local ruleCopy = copyAndSort(rule)
+              ruleCopy.isShown = true
+              for _i, _rule in ipairs(lootRules) do
                 _rule.isShown = false
               end
-            end
+              ruleCopy.uid = tostring(os.time()) .. tostring(os.clock()):gsub("%.", "")
+              table.insert(lootRules, ruleCopy)
+              changeMonitor = true
+            end)
           end
+
+          ImGui.PopStyleVar(2)
         end
+        if rule.disabled then
+          local textStart = Vector2.new(cursorPos.X, cursorPos.Y + ImGui.GetFontSize() / 2)
+          local textEnd = Vector2.new(textStart.X + ImGui.CalcTextSize(rule.name).X, textStart.Y)
+          ImGui.GetWindowDrawList().AddLine(textStart, textEnd, 0xFFFFFFFF)
+        end
+      end
+      
+      if rule.totalFound==nil then rule.totalFound=0 end
+      if not rule.isShown then
+        ImGui.SetCursorScreenPos(cursorPos+Vector2.new(ImGui.GetColumnWidth()-ImGui.CalcTextSize(tostring(rule.totalFound)).X,0))
+      else 
+        ImGui.SetCursorScreenPos(barOptions-Vector2.new(ImGui.CalcTextSize(tostring(rule.totalFound)).X+5,0))
+      end
+      ImGui.Text(tostring(rule.totalFound))
+
+
+      -- If clicked or rule is shown, render the content
+      if isClicked then
+        rule.isShown = not rule.isShown
         if rule.isShown then
-          local tabChange = renderTab(rule, rule, false)   -- render loot rule with item and criteriaObject as same
-          changeMonitor = changeMonitor or tabChange
+          for _i, _rule in ipairs(lootRules) do
+            if _rule ~= rule then
+              _rule.isShown = false
+            end
+          end
+        end
+      end
+      if rule.isShown then
+        local tabChange = renderTab(rule, rule, false)   -- render loot rule with item and criteriaObject as same
+        changeMonitor = changeMonitor or tabChange
 
-          rule.filter = rule.filter or "" -- Initialize filter
-          local changed, newValue = ImGui.InputText("Search enums", rule.filter, 64)
-          if changed then
-            rule.filter = newValue
-            lastFilterSet = {}
-            for idx, itemList in ipairs(sortedEnums) do
-              local enumId = allEnums[idx]
-              -- Set default if rule[enumName] doesn't exist
-              rule[enumId] = rule[enumId] or 1 -- Default to 1 if not set, or another fallback value, this is the sort index
+        rule.filter = rule.filter or "" -- Initialize filter
+        local changed, newValue = ImGui.InputText("Search enums", rule.filter, 64)
+        if changed then
+          rule.filter = newValue
+          lastFilterSet = {}
+          for idx, itemList in ipairs(sortedEnums) do
+            local enumId = allEnums[idx]
+            -- Set default if rule[enumName] doesn't exist
+            rule[enumId] = rule[enumId] or 1 -- Default to 1 if not set, or another fallback value, this is the sort index
 
-              table.insert(lastFilterSet,{})
-              -- Filter items based on the rule.filter
-              for e, enumInList in ipairs(itemList) do
-                if string.match(string.lower(tostring(enumInList)), string.lower(rule.filter)) then
-                  table.insert(lastFilterSet[idx], enumInList)
-                end
+            table.insert(lastFilterSet,{})
+            -- Filter items based on the rule.filter
+            for e, enumInList in ipairs(itemList) do
+              if string.match(string.lower(tostring(enumInList)), string.lower(rule.filter)) then
+                table.insert(lastFilterSet[idx], enumInList)
               end
             end
           end
+        end
 
-          if rule.filter ~= "" then
-            -- Loop through each ComboBox
-            for idx, itemList in ipairs(sortedEnums) do
-              local enumName = allEnums[idx]
-              local valuesKey = allValueStrings[idx]
-              local defaultValue = enumDefault[idx]
+        if rule.filter ~= "" then
+          -- Loop through each ComboBox
+          for idx, itemList in ipairs(sortedEnums) do
+            local enumName = allEnums[idx]
+            local valuesKey = allValueStrings[idx]
+            local defaultValue = enumDefault[idx]
 
 
-              -- Only render the ComboBox if there are any matching items
-              if lastFilterSet[idx] and  #lastFilterSet[idx] > 0 then
-                filterCounter = filterCounter + 1
+            -- Only render the ComboBox if there are any matching items
+            if lastFilterSet[idx] and  #lastFilterSet[idx] > 0 then
+              filterCounter = filterCounter + 1
 
-                -- Ensure the selected item is valid in the filtered list
-                local selectedIdx = rule[enumName]
-                if selectedIdx < 1 then selectedIdx = 1 end
-                if selectedIdx > #lastFilterSet[idx] then selectedIdx = #lastFilterSet[idx] end
+              -- Ensure the selected item is valid in the filtered list
+              local selectedIdx = rule[enumName]
+              if selectedIdx < 1 then selectedIdx = 1 end
+              if selectedIdx > #lastFilterSet[idx] then selectedIdx = #lastFilterSet[idx] end
 
-                -- Begin ComboBox with the selected item
-                if ImGui.BeginCombo(enumName .. "##" .. idx, lastFilterSet[idx][selectedIdx]) then
-                  for e, item in ipairs(lastFilterSet[idx]) do
-                    local isSelected = (selectedIdx == e)
+              -- Begin ComboBox with the selected item
+              if ImGui.BeginCombo(enumName .. "##" .. idx, lastFilterSet[idx][selectedIdx]) then
+                for e, item in ipairs(lastFilterSet[idx]) do
+                  local isSelected = (selectedIdx == e)
 
-                    if ImGui.Selectable(item, isSelected) then
-                      rule[enumName] = e -- Update rule[enumName] to the selected index
-                      local key = tostring(item)
-                      if lootRules[i][valuesKey][key] == nil then
-                        lootRules[i][valuesKey][key] = defaultValue
-                      else
-                        -- Find the next available underscored key
-                        local nextKey = key
-                        while lootRules[i][valuesKey][nextKey] ~= nil do
-                          nextKey = "_" .. nextKey
-                        end
-                        lootRules[i][valuesKey][nextKey] = deepcopy(lootRules[i][valuesKey][key])
+                  if ImGui.Selectable(item, isSelected) then
+                    rule[enumName] = e -- Update rule[enumName] to the selected index
+                    local key = tostring(item)
+                    if lootRules[i][valuesKey][key] == nil then
+                      lootRules[i][valuesKey][key] = defaultValue
+                    else
+                      -- Find the next available underscored key
+                      local nextKey = key
+                      while lootRules[i][valuesKey][nextKey] ~= nil do
+                        nextKey = "_" .. nextKey
                       end
-                      lootRules[i] = copyAndSort(lootRules[i])
-                      changeMonitor = true
+                      lootRules[i][valuesKey][nextKey] = deepcopy(lootRules[i][valuesKey][key])
                     end
+                    lootRules[i] = copyAndSort(lootRules[i])
+                    changeMonitor = true
                   end
-                  ImGui.EndCombo()
                 end
+                ImGui.EndCombo()
               end
             end
           end
         end
       end
-      if changeMonitor then
-        saveLootProfile()
-      end
-      ImGui.EndTable()
     end
+    if changeMonitor then
+      saveLootProfile()
+    end
+    ImGui.EndTable()
   end
+
   trackWindowState("lootRuleHolder")
-  ImGui.End()
 end)
 
 loadWindowData()
