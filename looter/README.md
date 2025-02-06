@@ -1,1 +1,1 @@
-A looter you can try. Currently doesn't loot, but you can inspect stuff and things and see if it WOULD loot, with a print
+one day this might be a looter
