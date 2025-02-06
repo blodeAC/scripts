@@ -1157,6 +1157,11 @@ lootRuleHolder.OnRender.Add(function()
         local tabChange = renderTab(rule, rule, false)   -- render loot rule with item and criteriaObject as same
         changeMonitor = changeMonitor or tabChange
 
+        if ImGui.Button("Add Spells") then
+          rule.spells=""
+        end
+        ImGui.SameLine()
+          
         rule.filter = rule.filter or "" -- Initialize filter
         local changed, newValue = ImGui.InputText("Search enums", rule.filter, 64)
         if changed then
