@@ -7,6 +7,7 @@ local inspectedItem
 local inspectQueue = {}
 local hud            -- main window
 local lootRuleHolder --loot rule window
+local testMode = false
 
 local copyAndSort
 
@@ -344,6 +345,14 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
 
   if (game.World.Selected ~= nil and game.World.Selected.Id == e.Data.ObjectId) then
     inspectedItem = itemData
+    if testMode then
+      local winningLootRule = evaluateLoot(itemData)
+      if winningLootRule then
+        print(weenie.Name .. " will be looted by rule: " .. winningLootRule)
+      else
+        print(weenie.Name .. " won't be looted: no matching rule")
+      end
+    end
   end
 
   for l = #inspectQueue, 1, -1 do
@@ -952,12 +961,27 @@ local function populateImport()
   end
 end
 populateImport()
+
 -- Render main inspection window
 hud.OnRender.Add(function()
   if inspectedItem == nil then
     ImGui.Text("No items inspected yet.")
   else
     if ImGui.BeginTabBar("InspectedItemTabs") then
+      local start = ImGui.GetWindowPos()+ImGui.GetWindowContentRegionMin()
+
+      local checkBoxSize = Vector2.new(18, 18)
+      local testModeLabelText = "TestMode"
+      ImGui.SetCursorScreenPos(start + Vector2.new(ImGui.GetContentRegionMax().X-checkBoxSize.X*2-ImGui.CalcTextSize(testModeLabelText).X,0))
+
+      if ImGui.Checkbox(testModeLabelText, testMode) then
+        testMode = not testMode
+        if testMode then
+          print("TestMode enabled. Selected inspection item will print matching rule.")
+        else
+          print("TestMode disabled.")
+        end
+      end
       if ImGui.BeginTabItem(inspectedItem.name) then
         renderTab(inspectedItem, inspectedItem.lootCriteria, true)
         if ImGui.Button("Template loot rule") then
@@ -990,6 +1014,7 @@ hud.OnRender.Add(function()
       end
       ImGui.EndTabBar()
     end
+
   end
   trackWindowState("hud")
 end)
