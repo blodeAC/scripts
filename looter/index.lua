@@ -1136,10 +1136,11 @@ lootRuleHolder.OnRender.Add(function()
       if rule.totalFound==nil then rule.totalFound=0 end
       if not rule.isShown then
         ImGui.SetCursorScreenPos(cursorPos+Vector2.new(ImGui.GetColumnWidth()-ImGui.CalcTextSize(tostring(rule.totalFound)).X,0))
-      else 
+        ImGui.Text(tostring(rule.totalFound))
+      elseif barOptions~=nil then
         ImGui.SetCursorScreenPos(barOptions-Vector2.new(ImGui.CalcTextSize(tostring(rule.totalFound)).X+5,0))
+        ImGui.Text(tostring(rule.totalFound))
       end
-      ImGui.Text(tostring(rule.totalFound))
 
 
       -- If clicked or rule is shown, render the content
@@ -1161,7 +1162,7 @@ lootRuleHolder.OnRender.Add(function()
           rule.spells=""
         end
         ImGui.SameLine()
-          
+
         rule.filter = rule.filter or "" -- Initialize filter
         local changed, newValue = ImGui.InputText("Search enums", rule.filter, 64)
         if changed then
@@ -1188,7 +1189,6 @@ lootRuleHolder.OnRender.Add(function()
             local enumName = allEnums[idx]
             local valuesKey = allValueStrings[idx]
             local defaultValue = enumDefault[idx]
-
 
             -- Only render the ComboBox if there are any matching items
             if lastFilterSet[idx] and  #lastFilterSet[idx] > 0 then
