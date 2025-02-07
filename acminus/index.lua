@@ -452,7 +452,7 @@ local function init()
       hkLockout = false
     end
     for _, key in ipairs(config.NOTARGETCAST) do
-      if ImGui.IsKeyPressed(key, false) and (game.World.Selected == nil or game.World.Selected.Container ~= nil) then
+      if game.Character.CombatMode~=CombatMode.NonCombat and ImGui.IsKeyPressed(key, false) and (game.World.Selected == nil or game.World.Selected.Container ~= nil) then
         getNextCombatTarget()
       end
     end
