@@ -220,6 +220,7 @@ local function evaluateLoot(item)
           if not ruleItem.sorted then
             ruleItem = copyAndSort(ruleItem)
           end
+          local failedOrs = {}
           for j = #ruleItem.sorted[keyValue], 1, -1 do
             local key = ruleItem.sorted[keyValue][j]
             local keyForCompare = string.gsub(key, "^_+", "")
@@ -229,10 +230,20 @@ local function evaluateLoot(item)
             else
               local comparator = ruleItem.comparator[keyValue] and ruleItem.comparator[keyValue][key] or "=="
               local ruleValue = ruleItem[keyValue][key]
-              local function andOrParser()
-                return ((ruleItem.AndOr == nil or ruleItem.AndOr[key] == nil) and
-                  (ruleItem.AndOr["_" .. key] == nil or (ruleItem.AndOr["_" .. key] and ruleItem.AndOr["_" .. key] == "and")) or
-                  ruleItem.AndOr[key] == "and")
+              local function andOrParser() -- if we're here, it failed this and/or condition
+                if ruleItem.AndOr[keyForCompare]=="or" then
+                  failedOrs[keyForCompare]=(failedOrs[keyForCompare] or 0) + 1
+                end
+                if ruleItem.AndOr[keyForCompare]==nil then -- no and/or, so failure
+                  return true
+                elseif ruleItem.AndOr[keyForCompare]=="or" and not ruleItem.comparator[keyValue]["_"..key] then
+                  local len = string.len(string.match(key, "^(_*)"))
+                  if failedOrs[keyForCompare] and failedOrs[keyForCompare]-len==1 then
+                    return true
+                  end
+                elseif ruleItem.AndOr[keyForCompare]=="and" then
+                  return true
+                end
               end
               if keyValue == "StringValues" and comparator == "==" then
                 if not Regex.IsMatch(itemValue or "", ruleValue or "") and andOrParser() then
@@ -865,7 +876,7 @@ local function renderTab(item, criteriaObject, disabled)
                   
                   while criteriaObject[valuesKey][nextKey] ~= nil do
                     criteriaObject[valuesKey][lastKey]=criteriaObject[valuesKey][nextKey]
-                    criteriaObject.AndOr[lastKey]=criteriaObject.AndOr[nextKey]
+                    --criteriaObject.AndOr[lastKey]=criteriaObject.AndOr[nextKey]
                     criteriaObject.comparator[valuesKey][lastKey] = criteriaObject.comparator[valuesKey][nextKey]
                     
                     lastKey = nextKey  
@@ -873,7 +884,7 @@ local function renderTab(item, criteriaObject, disabled)
                   end
                   
                   criteriaObject[valuesKey][lastKey] = nil
-                  criteriaObject.AndOr[lastKey] = nil
+                  --criteriaObject.AndOr[lastKey] = nil
                   criteriaObject.comparator[valuesKey][lastKey] = nil                  
                 else
                   criteriaObject[valuesKey][key] = nil
@@ -888,10 +899,10 @@ local function renderTab(item, criteriaObject, disabled)
               ImGui.TableSetColumnIndex(1)
 
               if keyForText ~= key and criteriaObject[valuesKey][key] then
-                criteriaObject.AndOr[key] = criteriaObject.AndOr[key] or "and"
+                criteriaObject.AndOr[keyForText] = criteriaObject.AndOr[keyForText] or "and"
                 ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FramePadding, Vector2.new(0, 0))
-                if ImGui.Button(criteriaObject.AndOr[key] .. "##andOr" .. key, Vector2.new(24, 20)) then
-                  criteriaObject.AndOr[key] = criteriaObject.AndOr[key] == "and" and "or" or "and"
+                if ImGui.Button(criteriaObject.AndOr[keyForText] .. "##andOr" .. key, Vector2.new(24, 20)) then
+                  criteriaObject.AndOr[keyForText] = criteriaObject.AndOr[keyForText] == "and" and "or" or "and"
                   changeMonitor = true
                 end
                 ImGui.PopStyleVar()
