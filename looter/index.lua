@@ -429,7 +429,7 @@ game.Messages.Incoming.Vendor_VendorInfo.Add(function(vendor)
       elseif not appraisedItems[v.ObjectID] then
         buildItem(v.ObjectID)
       end
-      sleep(333)
+      --sleep(333)
       local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
       if winningLootRule then
         print("\""..weenie.Name .. "\" wanted by " .. winningLootRule.name)
