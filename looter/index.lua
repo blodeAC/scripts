@@ -420,13 +420,13 @@ game.World.OnContainerOpened.Add(function(containerOpenedEvent)
   end
 end)
 
-local function vendorItemsCheck(item)
-  item = item.Data==nil and item or nil
+local function vendorItemsCheck(itemId)
+  itemId = type(itemId)=="number" and itemId or nil
   if testMode then
     if not game.World.Vendor then 
       return false
     end
-    if not item then
+    if not itemId then
       for i,v in ipairs(game.World.Vendor.Items) do
         local weenie=game.World.Get(v.ObjectID)
         if not weenie.HasAppraisalData then
@@ -434,7 +434,7 @@ local function vendorItemsCheck(item)
           game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
             if e.Data.ObjectId==weenie.Id then
               sleep(10)
-              vendorItemsCheck(game.World.Get(v.ObjectID))
+              vendorItemsCheck(v.ObjectID)
               return true
             end
           end)
@@ -449,14 +449,16 @@ local function vendorItemsCheck(item)
         end
       end
     else
-      local winningLootRule = evaluateLoot(appraisedItems[item.Id])
-      if winningLootRule then
-        print("\""..game.. item.Name .. "\" wanted by " .. winningLootRule.name)
+      local weenie=game.World.Get(itemId)
+      local winningLootRule = evaluateLoot(appraisedItems[itemId])
+      if winningLootRule and weenie then
+        print("\"".. weenie.Name .. "\" wanted by " .. winningLootRule.name)
       end
     end
   end
 end
 game.Messages.Incoming.Vendor_VendorInfo.Add(vendorItemsCheck)
+
 -----------------------------------------------------
 --- Profile Saving
 -----------------------------------------------------
