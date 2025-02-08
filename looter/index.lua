@@ -420,24 +420,43 @@ game.World.OnContainerOpened.Add(function(containerOpenedEvent)
   end
 end)
 
-game.Messages.Incoming.Vendor_VendorInfo.Add(function(vendor)
+local function vendorItemsCheck(item)
+  item = item.Data==nil and item or nil
   if testMode then
-    for i,v in ipairs(game.World.Vendor.Items) do
-      local weenie=game.World.Get(v.ObjectID)
-      if not weenie.HasAppraisalData then
-        game.Actions.ObjectAppraise(v.ObjectID)
-      elseif not appraisedItems[v.ObjectID] then
-        buildItem(v.ObjectID)
+    if not game.World.Vendor then 
+      return false
+    end
+    if not item then
+      for i,v in ipairs(game.World.Vendor.Items) do
+        local weenie=game.World.Get(v.ObjectID)
+        if not weenie.HasAppraisalData then
+          game.Actions.ObjectAppraise(v.ObjectID)
+          game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
+            if e.Data.ObjectId==weenie.Id then
+              sleep(10)
+              vendorItemsCheck(game.World.Get(v.ObjectID))
+              return true
+            end
+          end)
+        else
+          if not appraisedItems[v.ObjectID] then
+            buildItem(v.ObjectID)
+          end
+          local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
+          if winningLootRule then
+            print("\""..weenie.Name .. "\" wanted by " .. winningLootRule.name)
+          end
+        end
       end
-      --sleep(333)
-      local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
+    else
+      local winningLootRule = evaluateLoot(appraisedItems[item.Id])
       if winningLootRule then
-        print("\""..weenie.Name .. "\" wanted by " .. winningLootRule.name)
+        print("\""..game.. item.Name .. "\" wanted by " .. winningLootRule.name)
       end
     end
   end
-end)
-
+end
+game.Messages.Incoming.Vendor_VendorInfo.Add(vendorItemsCheck)
 -----------------------------------------------------
 --- Profile Saving
 -----------------------------------------------------
