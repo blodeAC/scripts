@@ -551,6 +551,7 @@ local function saveLootProfile()
     end
     rule.isRenaming = nil
     rule.isShown = nil
+    rule.filter = nil
   end
 
   -- Save back to the file
@@ -1261,7 +1262,7 @@ lootRuleHolder.OnRender.Add(function()
 
               -- Ensure the selected item is valid in the filtered list
               local selectedIdx = rule[enumName]
-              if selectedIdx < 1 then selectedIdx = 1 end
+              if selectedIdx == nil or selectedIdx < 1 then selectedIdx = 1 end
               if selectedIdx > #lastFilterSet[idx] then selectedIdx = #lastFilterSet[idx] end
 
               -- Begin ComboBox with the selected item
