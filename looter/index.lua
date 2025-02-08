@@ -294,7 +294,6 @@ local function evaluateLoot(item,lootRuleOverride)
           for i,invItem in ipairs(game.Character.Inventory) do
             count = count + (evaluateLoot(appraisedItems[invItem.Id],{ruleItem})~=false and 1 or 0)
           end
-          print(count)
           if count>=ruleItem.keepCount then
             return false
           end
@@ -325,11 +324,13 @@ local function loot(itemData,winningLootRule,weenie)
   function(objectMoveAction)
     if objectMoveAction.Success then
       if weenie.Value(BoolId.Inscribable) then
-        weenie.Inscribe(winningLootRule.name)
+        weenie.Inscribe(winningLootRule.name,lootActionOptions,function()
+          game.Actions.ObjectAppraise(weenie.Id)
+        end)
       end
       winningLootRule.totalFound = (winningLootRule.totalFound or 0)+ 1
     else
-      print("Failed to loot \"" .. weenie.Nameo .. "\":"..objectMoveAction.ErrorDetails)
+      print("Failed to loot \"" .. weenie.Name .. "\":"..objectMoveAction.ErrorDetails)
     end
   end)
 end
