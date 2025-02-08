@@ -411,7 +411,7 @@ end
 game.Messages.Incoming.Item_SetAppraiseInfo.Add(buildItem)
 
 game.World.OnContainerOpened.Add(function(containerOpenedEvent)
-  if containerOpenedEvent.Container.ObjectClass == ObjectClass.Corpse or containerOpenedEvent.Container.Name == "Corpse" then
+  if containerOpenedEvent.Container.ObjectClass == ObjectClass.Corpse or containerOpenedEvent.Container.Name == "Corpse" or Regex.Match(containerOpenedEvent.Container.Name,"Chest") then
     local weenie = game.World.Get(containerOpenedEvent.Container.Id)
     for i, itemid in ipairs(weenie.AllItemIds) do
       table.insert(inspectQueue, itemid)
@@ -420,6 +420,21 @@ game.World.OnContainerOpened.Add(function(containerOpenedEvent)
   end
 end)
 
+game.Messages.Incoming.Vendor_VendorInfo.Add(function(vendor)
+  for i,v in ipairs(game.World.Vendor.Items) do
+    local weenie=game.World.Get(v.ObjectID)
+    if not weenie.HasAppraisalData then
+      game.Actions.ObjectAppraise(v.ObjectID)
+    elseif not appraisedItems[v.ObjectID] then
+      buildItem(v.ObjectID)
+    end
+    sleep(1000)
+    local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
+    if winningLootRule then
+      print("\""..weenie.Name .. "\" wanted by " .. winningLootRule.name)
+    end
+  end
+end)
 
 -----------------------------------------------------
 --- Profile Saving
