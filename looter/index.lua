@@ -411,7 +411,7 @@ end
 game.Messages.Incoming.Item_SetAppraiseInfo.Add(buildItem)
 
 game.World.OnContainerOpened.Add(function(containerOpenedEvent)
-  if containerOpenedEvent.Container.ObjectClass == ObjectClass.Corpse or containerOpenedEvent.Container.Name == "Corpse" or Regex.Match(containerOpenedEvent.Container.Name,"Chest") then
+  if containerOpenedEvent.Container.ObjectClass == ObjectClass.Corpse or containerOpenedEvent.Container.Name == "Corpse" or Regex.IsMatch(containerOpenedEvent.Container.Name,"Chest") then
     local weenie = game.World.Get(containerOpenedEvent.Container.Id)
     for i, itemid in ipairs(weenie.AllItemIds) do
       table.insert(inspectQueue, itemid)
