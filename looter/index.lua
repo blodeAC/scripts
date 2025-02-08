@@ -421,17 +421,19 @@ game.World.OnContainerOpened.Add(function(containerOpenedEvent)
 end)
 
 game.Messages.Incoming.Vendor_VendorInfo.Add(function(vendor)
-  for i,v in ipairs(game.World.Vendor.Items) do
-    local weenie=game.World.Get(v.ObjectID)
-    if not weenie.HasAppraisalData then
-      game.Actions.ObjectAppraise(v.ObjectID)
-    elseif not appraisedItems[v.ObjectID] then
-      buildItem(v.ObjectID)
-    end
-    sleep(1000)
-    local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
-    if winningLootRule then
-      print("\""..weenie.Name .. "\" wanted by " .. winningLootRule.name)
+  if testMode then
+    for i,v in ipairs(game.World.Vendor.Items) do
+      local weenie=game.World.Get(v.ObjectID)
+      if not weenie.HasAppraisalData then
+        game.Actions.ObjectAppraise(v.ObjectID)
+      elseif not appraisedItems[v.ObjectID] then
+        buildItem(v.ObjectID)
+      end
+      sleep(333)
+      local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
+      if winningLootRule then
+        print("\""..weenie.Name .. "\" wanted by " .. winningLootRule.name)
+      end
     end
   end
 end)
