@@ -345,7 +345,6 @@ local bars = setmetatable({}, {
   __newindex = function(t, k, v)
     if type(v) == "table" and v.name then
       rawset(t, v.name, v) -- Index the bar by its name
-      v.parent = t         -- Set the parent reference
     end
     rawset(t, k, v)        -- Add to the array
   end,
@@ -484,7 +483,7 @@ bars({
               game.Actions.SalvageAdd(itemId, genericActionOpts, genericActionCallback)
             end
 
-            for _, exBar in ipairs(bar.parent) do
+            for _, exBar in ipairs(bars) do
               if exBar.name == "sort_salvagebag" and exBar.sortBag then
                 for _, itemId in ipairs(game.World.Get(exBar.sortBag).AllItemIds) do
                   game.Actions.SalvageAdd(itemId, genericActionOpts, genericActionCallback)
@@ -2013,5 +2012,45 @@ bars({
       DrawIcon(bar,bar.settings.icon_hex)
     end
   },
+  {
+    name = "salvageTailoring",
+    type = "button",
+    settings = {
+      enabled = false,
+      icon_hex = 9914,
+      label_str = " ",
+    },
+    func = function(bar)
+      if not game.Character.GetFirstInventory("Ust") then
+        print("No UST!")
+        return
+      else
+        game.Character.GetFirstInventory("Ust").Use(genericActionOpts, function(res)
+          for _, item in ipairs(game.Character.Inventory) do
+            if item.Value(StringId.Inscription)=="Tailoring" then
+              game.Actions.SalvageAdd(item.Id, genericActionOpts, genericActionCallback)
+            end
+          end
+
+          for _, exBar in ipairs(bars) do
+            if exBar.name == "sort_salvagebag" and exBar.sortBag then
+              for _, itemId in ipairs(game.World.Get(exBar.sortBag).AllItemIds) do
+                game.Actions.SalvageAdd(itemId, genericActionOpts, genericActionCallback)
+              end
+              break
+            end
+          end
+
+          local opts = ActionOptions.new()
+          opts.SkipChecks = true
+          ---@diagnostic disable-next-line
+          opts.TimeoutMilliseconds = 100
+          ---@diagnostic disable-next-line
+          opts.MaxRetryCount = 0
+          game.Actions.Salvage(opts, genericActionCallback)
+        end)
+      end
+    end,
+  }
 })
 return bars
