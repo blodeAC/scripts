@@ -1150,6 +1150,7 @@ lootRuleHolder.OnRender.Add(function()
           rule.isRenaming = true                                                               -- Trigger the renaming mode
         elseif ImGui.IsItemHovered() and ImGui.IsMouseReleased(_imgui.ImGuiMouseButton.Middle) then
           rule.disabled = not rule.disabled
+          changeMonitor = true
         elseif rule.isShown then
           barOptions = Vector2.new(ImGui.GetItemRectMax().X - 3 * buttonSize.X - ImGui.GetStyle().FramePadding.X,
             ImGui.GetItemRectMax().Y - ImGui.GetItemRectSize().Y + ImGui.GetStyle().FramePadding.Y)
