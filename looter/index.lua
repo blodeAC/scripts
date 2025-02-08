@@ -859,6 +859,22 @@ local function renderTab(item, criteriaObject, disabled)
               if changed then
                 if newValue then
                   criteriaObject[valuesKey][key] = value
+                elseif criteriaObject==item then
+                  local lastKey = key
+                  local nextKey = "_" .. key
+                  
+                  while criteriaObject[valuesKey][nextKey] ~= nil do
+                    criteriaObject[valuesKey][lastKey]=criteriaObject[valuesKey][nextKey]
+                    criteriaObject.AndOr[lastKey]=criteriaObject.AndOr[nextKey]
+                    criteriaObject.comparator[valuesKey][lastKey] = criteriaObject.comparator[valuesKey][nextKey]
+                    
+                    lastKey = nextKey  
+                    nextKey = "_" .. lastKey
+                  end
+                  
+                  criteriaObject[valuesKey][lastKey] = nil
+                  criteriaObject.AndOr[lastKey] = nil
+                  criteriaObject.comparator[valuesKey][lastKey] = nil                  
                 else
                   criteriaObject[valuesKey][key] = nil
                   if comparators then
@@ -870,6 +886,18 @@ local function renderTab(item, criteriaObject, disabled)
 
               ImGui.BeginDisabled(disabled)
               ImGui.TableSetColumnIndex(1)
+
+              if keyForText ~= key and criteriaObject[valuesKey][key] then
+                criteriaObject.AndOr[key] = criteriaObject.AndOr[key] or "and"
+                ImGui.PushStyleVar(_imgui.ImGuiStyleVar.FramePadding, Vector2.new(0, 0))
+                if ImGui.Button(criteriaObject.AndOr[key] .. "##andOr" .. key, Vector2.new(24, 20)) then
+                  criteriaObject.AndOr[key] = criteriaObject.AndOr[key] == "and" and "or" or "and"
+                  changeMonitor = true
+                end
+                ImGui.PopStyleVar()
+                ImGui.SameLine()
+              end
+
               ImGui.Text(ExtraEnums[valuesKey][keyForText])
               ImGui.TableNextColumn()
               changeMonitor = comparatorRender(comparators, criteriaObject, valuesKey, key) or changeMonitor
