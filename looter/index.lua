@@ -243,7 +243,7 @@ local function evaluateLoot(item,lootRuleOverride)
           for j = #ruleItem.sorted[keyValue], 1, -1 do
             local key = ruleItem.sorted[keyValue][j]
             local keyForCompare = string.gsub(key, "^_+", "")
-            local itemValue = item[keyValue][keyForCompare]
+            local itemValue = item[keyValue] and item[keyValue][keyForCompare] or nil
             if itemValue == nil then
               lootable = false -- If the item doesn't have the property, it doesn't match
             else
