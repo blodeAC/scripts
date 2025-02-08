@@ -259,8 +259,7 @@ local function evaluateLoot(item)
         lootable = false
       end
       if lootable then
-        ruleItem.totalFound = (ruleItem.totalFound or 0) + 1
-        return ruleItem.name
+        return ruleItem
       end
     end
   end
@@ -286,8 +285,9 @@ local function loot(itemData,winningLootRule,weenie)
   function(objectMoveAction)
     if objectMoveAction.Success then
       if weenie.Value(BoolId.Inscribable) then
-        weenie.Inscribe(winningLootRule)
+        weenie.Inscribe(winningLootRule.name)
       end
+      winningLootRule.totalFound = (winningLootRule.totalFound or 0)+ 1
     else
       print("Failed to loot \"" .. weenie.Nameo .. "\":"..objectMoveAction.ErrorDetails)
     end
@@ -348,7 +348,7 @@ game.Messages.Incoming.Item_SetAppraiseInfo.Add(function(e)
     if testMode then
       local winningLootRule = evaluateLoot(itemData)
       if winningLootRule then
-        print(weenie.Name .. " will be looted by rule: " .. winningLootRule)
+        print(weenie.Name .. " will be looted by rule: " .. winningLootRule.name)
       else
         print(weenie.Name .. " won't be looted: no matching rule")
       end
