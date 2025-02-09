@@ -1,4 +1,4 @@
-﻿local _imgui = require("imgui")
+local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
@@ -282,7 +282,19 @@ local hudCreate = function(bar)
   bar.hud = huds[name]
 
   -- Set HUD properties.
-  huds[name].Visible = true
+  if not bar.settings.hide then
+    huds[name].Visible = true
+  end
+
+  bar.hud.OnHide.Add(function()
+    bar.settings.hide = true
+    SaveBarSettings(bar,"settings.hide", true)
+  end)
+  bar.hud.OnShow.Add(function()
+    bar.settings.hide = false
+    SaveBarSettings(bar,"settings.hide", false)
+  end)
+
   huds[name].ShowInBar = true
 
   bar.imguiReset = true
