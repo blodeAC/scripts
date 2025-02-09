@@ -471,7 +471,6 @@ bars({
       icon_hex = 9914,
       label_str = " ",
     },
-    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "salvageme", game.Character, function()
         if not game.Character.GetFirstInventory("Ust") then
@@ -515,7 +514,6 @@ bars({
       icon_hex = 0x060011F7,
       label_str = "T    \n\n",
     },
-    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "trophies", game.Character,
         function() --left click
@@ -554,7 +552,6 @@ bars({
       icon_hex = 0x060011F7,
       label_str = "S    \n\n",
     },
-    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "salvage", game.Character, function()
         local count = 1
@@ -579,7 +576,6 @@ bars({
       icon_hex = 0x060011F7,
       label_str = "G    \n\n",
     },
-    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "gems", game.Character, function()
         local count = 1
@@ -604,7 +600,6 @@ bars({
       icon_hex = 0x060011F7,
       label_str = "C    \n\n",
     },
-    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "comps", game.Character, function()
         local count = 1
@@ -629,7 +624,6 @@ bars({
       icon_hex = 0x060011F7,
       label_str = "V    \n\n",
     },
-    init = function(bar) bar:func() end,
     func = function(bar)
       sortbag(bar, "vendor", game.Character, function()
         local count = 1
@@ -840,6 +834,7 @@ bars({
     name = "^mobPointer",
     settings = {
       enabled = false,
+      fontScale_flt = 1,
       icon_hex = 0x060069F6
     },
     init = function(bar)
