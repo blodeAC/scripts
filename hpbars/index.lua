@@ -11,7 +11,7 @@ local init = function()
     properties = {
       ObjectClass = {
         [ObjectClass.Monster]=0x8000FF00,
-        [ObjectClass.Player]=0x800000FF
+        --[ObjectClass.Player]=0x800000FF
       }
     },
     tests = {
@@ -435,7 +435,7 @@ local init = function()
     end
   end)
 
-  game.OnTick.Add(function()
+  --[[game.OnTick.Add(function()
     ---@diagnostic disable: undefined-field
     for _, wobject in pairs(wobjects_hp or {}) do
       if wobject.objectClass == ObjectClass.Player and wobject.hp ~= 1 then
@@ -443,7 +443,7 @@ local init = function()
       end
       ---@diagnostic enable: undefined-field
     end
-  end)
+  end)--]]
   ----------------------------------------
   --- Settings Saving/Loading
   ----------------------------------------
