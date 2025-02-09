@@ -547,13 +547,14 @@ end
 -- Track window state (call after ImGui.Begin)
 local function trackWindowState(windowName,isCollapsed)
   local isVisible = windows[windowName].Visible
-
+  isCollapsed = isCollapsed or false
   if isCollapsed then
     windowData[windowName].isCollapsed = true
     windowData[windowName].doCollapse = nil
     saveWindowData()
   elseif not isVisible then
     windowData[windowName].isVisible = false
+    windowData[windowName].doCollapse = nil
     saveWindowData()
   else
     local posX = ImGui.GetWindowPos().X
@@ -566,14 +567,14 @@ local function trackWindowState(windowName,isCollapsed)
     -- Check for changes
     if prevState.posX ~= posX or prevState.posY ~= posY or
         prevState.sizeX ~= sizeX or prevState.sizeY ~= sizeY or
-        prevState.isVisible ~= isVisible or prevState.isCollapsed ~= isCollapsed then
+        prevState.isVisible ~= isVisible or prevState.isCollapsed~=isCollapsed then
       windowData[windowName] = {
         posX = posX,
         posY = posY,
         sizeX = sizeX,
         sizeY = sizeY,
         isVisible = isVisible,
-        isCollapsed = isCollapsed or false
+        isCollapsed = false
       }
       saveWindowData()
     end
@@ -853,13 +854,15 @@ hud.OnHide.Add(function()
   trackWindowState("hud")
 end)
 
+local hudCollapse=false
 hud.OnPreRender.Add(function()
   ImGui.SetNextWindowSizeConstraints(Vector2.new(100, 100), Vector2.new(9999, 9999))
-  if windowData.hud~=nil and ((windowData.hud.doCollapse and not windowData.hud.isCollapsed) or (not windowData.hud.doCollapse and windowData.hud.isCollapsed)) then
+  if windowData.hud~=nil and (hudCollapse==nil and windowData.hud.isCollapsed) or (hudCollapse and not windowData.hud.isCollapsed) then
     ImGui.SetNextWindowCollapsed(true)
     trackWindowState("hud",true)
-  elseif windowData.hud and not windowData.hud.isCollapsed then
-    windowData.hud.doCollapse = true
+    hudCollapse = true
+  else
+    hudCollapse = true
   end
 end)
 
@@ -1087,9 +1090,7 @@ populateImport()
 
 -- Render main inspection window
 hud.OnRender.Add(function()
-  if windowData.hud~=nil then
-    windowData.hud.doCollapse = false
-  end
+  hudCollapse = false
 
   if inspectedItem == nil then
     ImGui.Text("No items inspected yet.")
@@ -1152,15 +1153,17 @@ lootRuleHolder.OnHide.Add(function()
   trackWindowState("lootRuleHolder")
 end)
 
+local lootRuleHolderCollapse
 lootRuleHolder.OnPreRender.Add(function()
   local style = ImGui.GetStyle()
   local rowHeight = (ImGui.GetFontSize() + style.FramePadding.Y * 2) + style.ItemSpacing.Y + style.CellPadding.Y
   ImGui.SetNextWindowSizeConstraints(Vector2.new(100, 100+rowHeight*#lootRules), Vector2.new(9999, 9999))
-  if windowData.lootRuleHolder~=nil and ((windowData.lootRuleHolder.doCollapse and not windowData.lootRuleHolder.isCollapsed) or (not windowData.lootRuleHolder.doCollapse and windowData.lootRuleHolder.isCollapsed)) then    
+  if windowData.lootRuleHolder~=nil and (lootRuleHolderCollapse==nil and windowData.lootRuleHolder.isCollapsed) or (lootRuleHolderCollapse and not windowData.lootRuleHolder.isCollapsed) then
     ImGui.SetNextWindowCollapsed(true)
     trackWindowState("lootRuleHolder",true)
-  elseif windowData.lootRuleHolder and not windowData.lootRuleHolder.isCollapsed then
-    windowData.lootRuleHolder.doCollapse = true
+    lootRuleHolderCollapse = true
+  else
+    lootRuleHolderCollapse = true
   end
 end)
 
@@ -1195,9 +1198,7 @@ end
 local lastFilterSet = {}  -- Cache filters to reduce looping through all enums
 local hintText = "Right-click to rename"
 lootRuleHolder.OnRender.Add(function()
-  if windowData.lootRuleHolder~=nil then
-    windowData.lootRuleHolder.doCollapse = false
-  end
+  lootRuleHolderCollapse = false
 
   lastFilterCount = filterCounter
   filterCounter = 0
