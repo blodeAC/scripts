@@ -145,14 +145,21 @@ ExtraEnums = {
     "D_AmmoEffect",
     "D_AmmoEffectUsesRemaining",
     "D_AltCurrencyValue",
+    "D_Tier"
   },{
     __index = function (t, k)
-      local k_num
-      if type(k)=="string" then
-        k_num = tonumber(k)
-      end
-      if not k_num then
-        return k
+      local k_num = tonumber(k)
+      if k_num==nil then
+        if k=="D_Tier" then
+          return "10007"
+        else
+          for i,name in ipairs(ExtraEnums.IntValues) do
+            if name==k then
+              return tostring(i+390)
+            end
+          end
+          return k
+        end
       elseif k=="10007" then
         return "D_Tier"
       elseif t[k_num-390]~=nil then
@@ -194,11 +201,13 @@ ExtraEnums = {
     "D_ReturnHomeWhenStuck",
   },{
     __index = function (t, k)
-      local k_num
-      if type(k)=="string" then
-        k_num = tonumber(k)
-      end
-      if not k_num then
+      local k_num = tonumber(k)
+      if k_num==nil then
+        for i,name in ipairs(ExtraEnums.BoolValues) do
+          if name==k then
+            return tostring(i+130)
+          end
+        end
         return k
       elseif k_num > 130 and t[k_num-130]~=nil then
         return t[k_num-130]
@@ -302,12 +311,22 @@ ExtraEnums = {
     "D_BaseManaConversionMod"
   },{
     __index = function (t, k)
-      local k_num
-      if type(k)=="string" then
-        k_num = tonumber(k)
-      end
-      if not k_num then
-        return k
+      local k_num = tonumber(k)
+      if k_num==nil then
+        if k=="D_HotspotImmunityTimestamp" then
+          return "10002"
+        else
+          for i,name in ipairs(ExtraEnums.FloatValues) do
+            if name==k then
+              if i<28 then
+                return tostring(i+170)
+              else
+                return tostring(i+19972)
+              end
+            end
+          end
+          return k
+        end
       elseif k_num == 10002 then
         return "D_HotspotImmunityTimestamp"
       elseif k_num < 199 and t[k_num-171]~=nil then
@@ -327,11 +346,13 @@ ExtraEnums = {
     "D_CorpseLog",
   },{
     __index = function (t, k)
-      local k_num
-      if type(k)=="string" then
-        k_num = tonumber(k)
-      end
-      if not k_num then
+      local k_num = tonumber(k)
+      if k_num==nil then
+        for i,name in ipairs(ExtraEnums.StringValues) do
+          if name==k then
+            return tostring(i+9009)
+          end
+        end
         return k
       elseif k_num > 9009 and t[k_num-9009]~=nil then
         return t[k_num-9009]
