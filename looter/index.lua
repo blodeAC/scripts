@@ -545,10 +545,14 @@ local function saveWindowData()
 end
 
 -- Track window state (call after ImGui.Begin)
-local function trackWindowState(windowName)
+local function trackWindowState(windowName,isCollapsed)
   local isVisible = windows[windowName].Visible
 
-  if not isVisible then
+  if isCollapsed then
+    windowData[windowName].isCollapsed = true
+    windowData[windowName].doCollapse = nil
+    saveWindowData()
+  elseif not isVisible then
     windowData[windowName].isVisible = false
     saveWindowData()
   else
@@ -562,13 +566,14 @@ local function trackWindowState(windowName)
     -- Check for changes
     if prevState.posX ~= posX or prevState.posY ~= posY or
         prevState.sizeX ~= sizeX or prevState.sizeY ~= sizeY or
-        prevState.isVisible ~= isVisible then
+        prevState.isVisible ~= isVisible or prevState.isCollapsed ~= isCollapsed then
       windowData[windowName] = {
         posX = posX,
         posY = posY,
         sizeX = sizeX,
         sizeY = sizeY,
-        isVisible = isVisible
+        isVisible = isVisible,
+        isCollapsed = isCollapsed or false
       }
       saveWindowData()
     end
@@ -844,12 +849,18 @@ local imguiInputs = {
 
 -- Create main inspection window
 hud = views.Huds.CreateHud("LootInspect", 0x06001A8A)
-hud.Visible = true
 hud.OnHide.Add(function()
   trackWindowState("hud")
 end)
+
 hud.OnPreRender.Add(function()
   ImGui.SetNextWindowSizeConstraints(Vector2.new(100, 100), Vector2.new(9999, 9999))
+  if windowData.hud~=nil and ((windowData.hud.doCollapse and not windowData.hud.isCollapsed) or (not windowData.hud.doCollapse and windowData.hud.isCollapsed)) then
+    ImGui.SetNextWindowCollapsed(true)
+    trackWindowState("hud",true)
+  elseif windowData.hud and not windowData.hud.isCollapsed then
+    windowData.hud.doCollapse = true
+  end
 end)
 
 
@@ -1076,6 +1087,10 @@ populateImport()
 
 -- Render main inspection window
 hud.OnRender.Add(function()
+  if windowData.hud~=nil then
+    windowData.hud.doCollapse = false
+  end
+
   if inspectedItem == nil then
     ImGui.Text("No items inspected yet.")
   else
@@ -1133,7 +1148,6 @@ end)
 
 -- Create loot rules window
 lootRuleHolder = views.Huds.CreateHud("*LootRuleHolder")
-lootRuleHolder.Visible = true
 lootRuleHolder.OnHide.Add(function()
   trackWindowState("lootRuleHolder")
 end)
@@ -1142,6 +1156,12 @@ lootRuleHolder.OnPreRender.Add(function()
   local style = ImGui.GetStyle()
   local rowHeight = (ImGui.GetFontSize() + style.FramePadding.Y * 2) + style.ItemSpacing.Y + style.CellPadding.Y
   ImGui.SetNextWindowSizeConstraints(Vector2.new(100, 100+rowHeight*#lootRules), Vector2.new(9999, 9999))
+  if windowData.lootRuleHolder~=nil and ((windowData.lootRuleHolder.doCollapse and not windowData.lootRuleHolder.isCollapsed) or (not windowData.lootRuleHolder.doCollapse and windowData.lootRuleHolder.isCollapsed)) then    
+    ImGui.SetNextWindowCollapsed(true)
+    trackWindowState("lootRuleHolder",true)
+  elseif windowData.lootRuleHolder and not windowData.lootRuleHolder.isCollapsed then
+    windowData.lootRuleHolder.doCollapse = true
+  end
 end)
 
 local textures = {}
@@ -1175,6 +1195,10 @@ end
 local lastFilterSet = {}  -- Cache filters to reduce looping through all enums
 local hintText = "Right-click to rename"
 lootRuleHolder.OnRender.Add(function()
+  if windowData.lootRuleHolder~=nil then
+    windowData.lootRuleHolder.doCollapse = false
+  end
+
   lastFilterCount = filterCounter
   filterCounter = 0
   if ImGui.BeginTable("ListTable", 1, _imgui.ImGuiTableFlags.Borders) then
@@ -1389,7 +1413,6 @@ lootRuleHolder.OnRender.Add(function()
     end
     ImGui.EndTable()
   end
-
   trackWindowState("lootRuleHolder")
 end)
 
@@ -1402,4 +1425,7 @@ game.OnRender3D.Add(function()
 end)
 
 loadWindowData()
+hud.Visible = (windowData.hud==nil and true) or (windowData.hud.isVisible~=false and true) or false 
+lootRuleHolder.Visible = (windowData.lootRuleHolder==nil and true) or (windowData.lootRuleHolder.isVisible~=false and true) or false
+
 loadLootProfile()
