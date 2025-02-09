@@ -854,7 +854,7 @@ hud.OnHide.Add(function()
   trackWindowState("hud")
 end)
 
-local hudCollapse=false
+local hudCollapse
 hud.OnPreRender.Add(function()
   ImGui.SetNextWindowSizeConstraints(Vector2.new(100, 100), Vector2.new(9999, 9999))
   if windowData.hud~=nil and (hudCollapse==nil and windowData.hud.isCollapsed) or (hudCollapse and not windowData.hud.isCollapsed) then
