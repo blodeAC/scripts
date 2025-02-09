@@ -1,4 +1,4 @@
-local _imgui = require("imgui")
+﻿local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
@@ -15,7 +15,7 @@ local textures = {}
 function GetOrCreateTexture(textureId)
   if textures[textureId] == nil then
     local texture ---@type ManagedTexture
-    texture = views.Huds.GetIconTexture(textureId)
+    texture = views.Huds.GetIconTexture(textureId) or views.Huds.GetIconTexture(0x06001B05)
     textures[textureId] = texture
   end
 
@@ -29,7 +29,9 @@ function DrawIcon(bar, overrideId, size, func)
   local bar_position = ImGui.GetCursorScreenPos().X .. "-" .. ImGui.GetCursorScreenPos().Y
 
   local texture = overrideId and GetOrCreateTexture(overrideId) or GetOrCreateTexture(bar.settings.icon_hex)
-  if not texture then return false end
+  if not texture then 
+    return false 
+  end
 
   if overrideId then
     if ImGui.TextureButton("##" .. bar_position .. overrideId, texture, size) then
