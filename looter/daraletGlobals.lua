@@ -15,7 +15,7 @@ D_SigilTrinketBonusStat.FromValue = function(value)
 end
 
 
-D_ArmorWeightClass = {None=0,Cloth=1,Light=2,Medium=3,Heavy=4}
+D_ArmorWeightClass = {None=0,Cloth=1,Light=2,Heavy=4}
 D_ArmorWeightClass.GetValues = function(value)
   if value then
     for name,enumVal in pairs(D_ArmorWeightClass) do
@@ -24,7 +24,7 @@ D_ArmorWeightClass.GetValues = function(value)
       end
     end
   else
-    return  {"None","Cloth","Light","Medium","Heavy"}
+    return  {"None","Cloth","Light","Heavy"}
   end
 end
 D_ArmorWeightClass.FromValue = function(value)
