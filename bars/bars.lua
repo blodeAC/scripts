@@ -452,7 +452,7 @@ bars({
     },
     text = function(bar)
       if game.World.Selected == nil or game.World.Selected.ObjectClass ~= ObjectClass.Monster then return "" end
-      local dist = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))
+      local dist = acclient.Coordinates.Me.DistanceToFlat(acclient.Movement.GetPhysicsCoordinates(game.World.Selected.Id))*1/0.9144
       if not bar.settings.minDistance_num then
         bar.settings.minDistance_num = 0
       end
@@ -835,40 +835,59 @@ bars({
     settings = {
       enabled = false,
       fontScale_flt = 1,
-      icon_hex = 0x060069F6
+      icon_hex = 0x060069F6,
+      mobToSearch = ""
     },
     init = function(bar)
-      bar.mobToSearch = bar.mobToSearch or ""
+      bar.settings.mobToSearch = bar.settings.mobToSearch or ""
+      bar.mobIndex = 1
 
       bar.findMobByName = function(name)
-        if name == "" then
-          return nil
-        end
+        local matchingMobs = {}
 
-        local matchingMob = nil
-        local minDistance = math.huge
-
-        for _, object in ipairs(game.World.GetLandscape()) do
-          if string.find(string.lower(object.Name), string.lower(name)) then
-            -- print("Found Mob: "..object.Name)
-            local distance = acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(object.Id))
-            if distance < minDistance and (matchingMob == nil or distance < matchingMob.Distance) then
-              minDistance = distance
-              matchingMob = {
-                Id = object.Id,
-                Name = object.Name,
-                Distance = distance,
-                Coordinates = acclient.Movement.GetPhysicsCoordinates(object.Id),
-              }
+        if name ~= "" then
+          for _, object in ipairs(game.World.GetLandscape()) do
+            if object ~= game.Character.Weenie then 
+              if string.find(string.lower(object.Name), string.lower(name)) then
+                -- print("Found Mob: "..object.Name)
+                table.insert(matchingMobs, {
+                  Id = object.Id,
+                  Name = object.Name,
+                  Distance = function() return acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(object.Id)) end,
+                  Coordinates = acclient.Movement.GetPhysicsCoordinates(object.Id),
+                })
               --  print("Matching Mob: "..matchingMob.Name.."("..matchingMob.Id.."): Distance="..distance)
+              end
             end
           end
+          
+          table.sort(matchingMobs,function(a,b)
+            return a.Distance()<b.Distance()
+          end)
         end
-        return matchingMob
+        return matchingMobs
       end
 
-      bar.renderArrowToMob = function(currentMob, distance)
+      bar.insertMob = function(newMobId)
+        local weenie = game.World.Get(newMobId)
+        local newMob = {
+          Id = weenie.Id,
+          Name = weenie.Name,
+          Distance = function() return acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(weenie.Id)) end,
+          Coordinates = acclient.Movement.GetPhysicsCoordinates(weenie.Id)
+        }
+
+        for i,mob in ipairs(bar.currentMobs) do
+          if newMob.Distance()<mob.Distance() then
+            table.insert(bar.currentMobs, newMob[i])
+            break
+          end
+        end
+      end
+
+      bar.renderArrowToMob = function(distance)
         ---@diagnostic disable:undefined-field
+        local currentMob = bar.currentMobs[bar.mobIndex]
         local angleToMob = math.rad(acclient.Coordinates.Me.HeadingTo(acclient.Movement.GetPhysicsCoordinates(currentMob.Id)))
         ---@diagnostic enable:undefined-field
 
@@ -970,47 +989,65 @@ bars({
           1.0         -- Line thickness
         )
       end
+      
+      bar.removeMob = function(removeMobId)
+        for i,mob in ipairs(bar.currentMobs) do
+          if removeMobId == mob.Id then
+            bar.currentMobs[i]=nil
+            break
+          end
+        end
+      end
 
       game.World.OnObjectCreated.Add(function(e)
-        if bar.mobToSearch and bar.mobToSearch ~= "" and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.mobToSearch)) then
+        if bar.settings.mobToSearch and bar.settings.mobToSearch ~= "" and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.settings.mobToSearch)) then
           if game.Character.InPortalSpace then
             game.Character.OnPortalSpaceExited.Once(function()
-              bar.currentMob = bar.findMobByName(bar.mobToSearch)
+              bar.insertMob(e.ObjectId)
             end)
-          else
-            sleep(100)
-            bar.currentMob = bar.findMobByName(bar.mobToSearch)
           end
         end
       end)
 
       game.Messages.Incoming.Inventory_PickupEvent.Add(function(e)
-        if bar.currentMob ~= nil and e.Data.ObjectId == bar.currentMob.Id then
-          bar.currentMob = nil
-        end
+        bar.removeMob(e.Data.ObjectId)
       end)
 
       game.World.OnObjectReleased.Add(function(e)
         ---@diagnostic disable-next-line
-        if bar.currentMob and e.ObjectId == bar.currentMob.Id then
-          bar.currentMob = bar.findMobByName(bar.mobToSearch)
+        bar.removeMob(e.ObjectId)
+      end)
+      game.Character.Weenie.OnPositionChanged.Add(function(e)
+        local myMobId=bar.currentMobs[bar.mobIndex].Id
+        if #bar.currentMobs>1 then
+          table.sort(bar.currentMobs, function(a,b)
+            return a.Distance()<b.Distance()
+          end)
+          for i,mob in ipairs(bar.currentMobs) do
+            if mob.Id==myMobId then
+              bar.mobIndex=i
+              break
+            end
+          end
         end
       end)
+      bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
     end,
+
     render = function(bar)
       ImGui.Text("  ")
       ImGui.SameLine()
 
       -- Input box for mob name
       ImGui.PushItemWidth(-1)
-      local inputChanged, newMobName = ImGui.InputText("###MobNameInput", bar.mobToSearch, 24,
+      local inputChanged, newMobName = ImGui.InputText("###MobNameInput", bar.settings.mobToSearch, 24,
         _imgui.ImGuiInputTextFlags.None)
       ImGui.PopItemWidth()
 
       local isInputActive = ImGui.IsItemActive()
 
       -- Placeholder text
-      if bar.mobToSearch == "" and not isInputActive then
+      if bar.settings.mobToSearch == "" and not isInputActive then
         local inputPos = ImGui.GetItemRectMin()
         local textSize = ImGui.CalcTextSize("Mob Name")
         local textPos = Vector2.new(inputPos.X + 5, inputPos.Y + (ImGui.GetItemRectSize().Y - textSize.Y) * 0.5)
@@ -1025,22 +1062,47 @@ bars({
       -- Check if Enter was pressed while the input box was focused
       if inputChanged and ImGui.IsKeyPressed(_imgui.ImGuiKey.Enter) then
         -- Update mobToSearch and find the mob when Enter is pressed
-        bar.mobToSearch = newMobName or ""
-        SaveBarSettings(bar, "mobToSearch", newMobName)
-        bar.currentMob = bar.findMobByName(bar.mobToSearch)
+        bar.settings.mobToSearch = newMobName or ""
+        SaveBarSettings(bar,"settings.mobToSearch", bar.settings.mobToSearch)
+        bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
       end
 
       -- Only add NewLine if the input is not active
-      if not isInputActive and (bar.mobToSearch == nil or bar.mobToSearch == "") then
+      if not isInputActive and (bar.settings.mobToSearch == nil or bar.settings.mobToSearch== "") then
         ImGui.Text(" ")
       end
 
-      if bar.currentMob then
-        local distance = acclient.Coordinates.Me.DistanceTo(bar.currentMob.Coordinates)
-        ImGui.Text(string.format("  %s (%.2f m)", bar.currentMob.Name,distance))
-        bar.renderArrowToMob(bar.currentMob,distance)
+      if bar.currentMobs~=nil and #bar.currentMobs>0 then
+        if bar.mobIndex>#bar.currentMobs then bar.mobIndex=#bar.currentMobs end
+        local distance = acclient.Coordinates.Me.DistanceTo(bar.currentMobs[bar.mobIndex].Coordinates)
+        ImGui.Text(string.format("  %s (%.2f m)", bar.currentMobs[bar.mobIndex].Name,distance))
+        bar.renderArrowToMob(distance)
       else
         ImGui.Text("  No matching mob detected")
+      end
+
+      if bar.currentMobs~=nil and #bar.currentMobs>1 then
+        local buttonSize = Vector2.new(ImGui.GetTextLineHeight(),ImGui.GetTextLineHeight())
+        local buttonY = ImGui.GetWindowContentRegionMax().Y - ImGui.GetTextLineHeightWithSpacing()
+        ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowContentRegionMin().X, buttonY))
+        if ImGui.Button("-##mobIndexLessOne", buttonSize) then
+          bar.mobIndex = bar.mobIndex - 1
+          if bar.mobIndex==0 then 
+            bar.mobIndex = #bar.currentMobs 
+          end
+        end
+        
+        local displayText = tostring(bar.mobIndex) .. " / " ..tostring(#bar.currentMobs)
+        ImGui.SetCursorPos(Vector2.new((ImGui.GetWindowContentRegionMax().X-ImGui.GetWindowContentRegionMin().X)/2 - ImGui.CalcTextSize(displayText).X/2, buttonY + ImGui.GetStyle().CellPadding.Y ))
+        ImGui.Text(displayText)
+
+        ImGui.SetCursorPos(Vector2.new(ImGui.GetWindowContentRegionMax().X - buttonSize.X - ImGui.GetStyle().FramePadding.X, buttonY))
+        if ImGui.Button("+##mobIndexPlusOne", Vector2.new(ImGui.GetTextLineHeight(),ImGui.GetTextLineHeight())) then
+          bar.mobIndex = bar.mobIndex + 1
+          if bar.mobIndex>#bar.currentMobs then 
+            bar.mobIndex = 1 
+          end
+        end
       end
     end
   },
