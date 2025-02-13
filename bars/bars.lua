@@ -989,7 +989,7 @@ bars({
           1.0         -- Line thickness
         )
       end
-      
+
       bar.removeMob = function(removeMobId)
         for i,mob in ipairs(bar.currentMobs) do
           if removeMobId == mob.Id then
@@ -1005,6 +1005,9 @@ bars({
             game.Character.OnPortalSpaceExited.Once(function()
               bar.insertMob(e.ObjectId)
             end)
+          else
+            sleep(100)
+            bar.insertMob(e.ObjectId)
           end
         end
       end)
