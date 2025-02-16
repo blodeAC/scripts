@@ -2156,16 +2156,7 @@ bars({
         if bestKit==nil then
           print("No healing kits")
         else
-          local heal
-  
-          game.Character.AnimTracker.OnAnimationStarted.Until(function(anim)
-            if anim.Animation.Motion == MotionCommand.SkillHealSelf then
-              game.ActionQueue.Remove(heal)
-              game.Character.BusyTracker.Dispose()
-              return true
-            end
-          end)
-          heal = bestKit.UseOn(game.CharacterId)
+          bestKit.UseOn(game.CharacterId)
         end
       end
       DrawIcon(bar,bar.settings.icon_hex,false,healfunc)
