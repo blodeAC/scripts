@@ -1008,7 +1008,7 @@ bars({
               bar.insertMob(e.ObjectId)
             end)
           else
-            sleep(100)
+            sleep(333)
             bar.insertMob(e.ObjectId)
           end
         end
@@ -1763,7 +1763,7 @@ bars({
           entry.casterId = enchantment.CasterId
           entry.displayOrder = spell.DisplayOrder or 9999
           entry.isBuff = (SpellFlags.Beneficial + spell.Flags == spell.Flags)
-          entry.icon = spell.Icon or 9914
+          entry.icon = spell.Icon or 0x060011F7
 
 
           local function hasFlag(object, flag)
@@ -2059,7 +2059,7 @@ bars({
       game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
         local maybeKit=game.World.Get(cooldownChanged.Cooldown.ObjectId)
 
-        if maybeKit and maybeKit.ObjectClass==ObjectClass.HealingKit then
+        if maybeKit~=nil and maybeKit.ObjectClass==ObjectClass.HealingKit then
           bar.cooldown = cooldownChanged.Cooldown.ExpiresAt
         end
       end)
@@ -2126,11 +2126,11 @@ bars({
       hotkey_combo = {87,table.unpack(imguiHotkeys)}
     },
     init = function(bar)
-      ---@param cooldownChanged SharedCooldownsChangedEventArgs
-      game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
-        local maybeKit=game.World.Get(cooldownChanged.Cooldown.ObjectId)
+      ---@param cooldownEvent SharedCooldownsChangedEventArgs
+      game.Character.OnSharedCooldownsChanged.Add(function(cooldownEvent)
+        local maybeKit=game.World.Get(cooldownEvent.Cooldown.ObjectId)
         if maybeKit and maybeKit.ObjectClass==ObjectClass.HealingKit then
-          bar.cooldown = cooldownChanged.Cooldown.ExpiresAt
+          bar.cooldown = cooldownEvent.Cooldown.ExpiresAt
         end
       end)
     end,
@@ -2147,8 +2147,8 @@ bars({
       local healfunc = function()
         local lastBestMod=0
         local bestKit
-        for i,kit in  ipairs(game.Character.GetInventory(ObjectClass.HealingKit)) do
-          local newBestMod = kit.Value(FloatId.HealkitMod)
+        for i,kit in ipairs(game.Character.GetInventory(ObjectClass.HealingKit) or {}) do
+          local newBestMod = kit.Value(FloatId.HealkitMod,0)
           if newBestMod > lastBestMod then
             bestKit = kit
           end
@@ -2160,8 +2160,59 @@ bars({
         end
       end
       DrawIcon(bar,bar.settings.icon_hex,false,healfunc)
+      
       if ImGui.IsKeyPressed(_imgui.ImGuiKey[bar.settings.hotkey_combo[bar.settings.hotkey_combo[1]+1]], false) then
         healfunc()
+      end
+    end
+  },{
+    name="AutoCram",
+    type = "button",
+    settings = {
+      enabled = false,
+      icon_hex = 0x060011F7
+    },
+    func = function(bar)
+      local appraiseTable={}
+      for i,pack in ipairs(game.Character.Containers) do
+        if not pack.HasAppraisalData then
+          table.insert(appraiseTable, pack.Id)
+          pack.Appraise()
+        end
+      end
+      if #appraiseTable>0 then
+        game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
+          for i,packId in ipairs(appraiseTable) do
+            if packId==e.Data.ObjectId then
+              table.remove(appraiseTable,i)
+              if #appraiseTable==0 then
+                bar:func()
+                return true
+              end
+            end
+          end
+          return false
+        end)
+      else
+        local freeSlots = {}
+        for i,pack in ipairs(game.Character.Containers) do
+          if string.len(pack.Value(StringId.Inscription))==0 then
+            local freeInThisBag = pack.Value(IntId.ItemsCapacity)-#pack.AllItemIds
+            if freeInThisBag>0 then
+              for j=1,freeInThisBag do
+                table.insert(freeSlots,pack.Id)
+              end
+            end
+          end
+        end
+        local maxToMove=math.min(#game.Character.Weenie.AllItemIds,#freeSlots)
+        local count=1
+        if maxToMove>0 then
+          for i=1,maxToMove do
+            game.Actions.ObjectMove(game.Character.Weenie.AllItemIds[count],table.remove(freeSlots),0,true,stagger(count),genericActionCallback)
+            count=count+1
+          end
+        end
       end
     end
   }
