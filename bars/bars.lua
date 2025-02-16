@@ -3,6 +3,8 @@ local ImGui = _imgui.ImGui
 local vitals = game.Character.Weenie.Vitals
 local acclient = require("acclient")
 
+local imguiHotkeys = {"Tab","LeftArrow","RightArrow","UpArrow","DownArrow","PageUp","PageDown","Home","End","Insert","Delete","Backspace","Space","Enter","Escape","LeftCtrl","LeftShift","LeftAlt","LeftSuper","RightCtrl","RightShift","RightAlt","RightSuper","Menu","_0","_1","_2","_3","_4","_5","_6","_7","_8","_9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","Apostrophe","Comma","Minus","Period","Slash","Semicolon","Equal","LeftBracket","Backslash","RightBracket","GraveAccent","CapsLock","ScrollLock","NumLock","PrintScreen","Pause","Keypad0","Keypad1","Keypad2","Keypad3","Keypad4","Keypad5","Keypad6","Keypad7","Keypad8","Keypad9","KeypadDecimal","KeypadDivide","KeypadMultiply","KeypadSubtract","KeypadAdd","KeypadEnter","KeypadEqual"}
+
 -- ACTIONQUEUE CONFIG
 local genericActionOpts = ActionOptions.new()
 ---@diagnostic disable
@@ -1036,7 +1038,7 @@ bars({
           end
         end
       end)
-      
+
       bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
     end,
 
@@ -2114,6 +2116,63 @@ bars({
         end)
       end
     end,
+  },
+  {
+    name = "OneTouchHeal",
+    settings = {
+      enabled = false,
+      icon_hex = 0x060032F3,
+      fontScale_flt = 2.0,
+      hotkey_combo = {87,table.unpack(imguiHotkeys)}
+    },
+    init = function(bar)
+      ---@param cooldownChanged SharedCooldownsChangedEventArgs
+      game.Character.OnSharedCooldownsChanged.Add(function(cooldownChanged)
+        local maybeKit=game.World.Get(cooldownChanged.Cooldown.ObjectId)
+        if maybeKit and maybeKit.ObjectClass==ObjectClass.HealingKit then
+          bar.cooldown = cooldownChanged.Cooldown.ExpiresAt
+        end
+      end)
+    end,
+    render = function(bar)
+      if bar.cooldown then
+        local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
+        if rem > 0 then
+          bar.settings.label_str = string.format("%.1f", rem)
+        else
+          bar.cooldown = nil
+          bar.settings.label_str = nil
+        end
+      end
+      local healfunc = function()
+        local lastBestMod=0
+        local bestKit
+        for i,kit in  ipairs(game.Character.GetInventory(ObjectClass.HealingKit)) do
+          local newBestMod = kit.Value(FloatId.HealkitMod)
+          if newBestMod > lastBestMod then
+            bestKit = kit
+          end
+        end
+        if bestKit==nil then
+          print("No healing kits")
+        else
+          local heal
+  
+          game.Character.AnimTracker.OnAnimationStarted.Until(function(anim)
+            if anim.Animation.Motion == MotionCommand.SkillHealSelf then
+              game.ActionQueue.Remove(heal)
+              game.Character.BusyTracker.Dispose()
+              return true
+            end
+          end)
+          heal = bestKit.UseOn(game.CharacterId)
+        end
+      end
+      DrawIcon(bar,bar.settings.icon_hex,false,healfunc)
+      if ImGui.IsKeyPressed(_imgui.ImGuiKey[bar.settings.hotkey_combo[bar.settings.hotkey_combo[1]+1]], false) then
+        healfunc()
+      end
+    end
   }
 })
 return bars
