@@ -1021,19 +1021,22 @@ bars({
         bar.removeMob(e.ObjectId)
       end)
       game.Character.Weenie.OnPositionChanged.Add(function(e)
-        local myMobId=bar.currentMobs[bar.mobIndex].Id
-        if #bar.currentMobs>1 then
-          table.sort(bar.currentMobs, function(a,b)
-            return a.Distance()<b.Distance()
-          end)
-          for i,mob in ipairs(bar.currentMobs) do
-            if mob.Id==myMobId then
-              bar.mobIndex=i
-              break
+        if bar.currentMobs and bar.currentMobs[bar.mobIndex] then
+          local myMobId=bar.currentMobs[bar.mobIndex].Id
+          if #bar.currentMobs>1 then
+            table.sort(bar.currentMobs, function(a,b)
+              return a.Distance()<b.Distance()
+            end)
+            for i,mob in ipairs(bar.currentMobs) do
+              if mob.Id==myMobId then
+                bar.mobIndex=i
+                break
+              end
             end
           end
         end
       end)
+      
       bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
     end,
 
