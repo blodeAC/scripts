@@ -2134,6 +2134,21 @@ bars({
         end
       end)
     end,
+    healfunc = function()
+      local lastBestMod=0
+      local bestKit
+      for i,kit in ipairs(game.Character.GetInventory(ObjectClass.HealingKit) or {}) do
+        local newBestMod = kit.Value(FloatId.HealkitMod,0)
+        if newBestMod > lastBestMod then
+          bestKit = kit
+        end
+      end
+      if bestKit==nil then
+        print("No healing kits")
+      else
+        bestKit.UseOn(game.CharacterId,genericActionOpts)
+      end
+    end,
     render = function(bar)
       if bar.cooldown then
         local rem = (bar.cooldown - DateTime.UtcNow).TotalSeconds
@@ -2144,25 +2159,11 @@ bars({
           bar.settings.label_str = nil
         end
       end
-      local healfunc = function()
-        local lastBestMod=0
-        local bestKit
-        for i,kit in ipairs(game.Character.GetInventory(ObjectClass.HealingKit) or {}) do
-          local newBestMod = kit.Value(FloatId.HealkitMod,0)
-          if newBestMod > lastBestMod then
-            bestKit = kit
-          end
-        end
-        if bestKit==nil then
-          print("No healing kits")
-        else
-          bestKit.UseOn(game.CharacterId)
-        end
-      end
-      DrawIcon(bar,bar.settings.icon_hex,false,healfunc)
+
+      DrawIcon(bar,bar.settings.icon_hex,false,bar.healfunc)
       
       if ImGui.IsKeyPressed(_imgui.ImGuiKey[bar.settings.hotkey_combo[bar.settings.hotkey_combo[1]+1]], false) then
-        healfunc()
+        bar.healfunc()
       end
     end
   },{
