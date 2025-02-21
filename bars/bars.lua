@@ -2146,7 +2146,7 @@ bars({
       if bestKit==nil then
         print("No healing kits")
       else
-        bestKit.UseOn(game.CharacterId,genericActionOpts)
+        game.Actions.ObjectUse(bestKit.Id,game.CharacterId,genericActionOpts)
       end
     end,
     render = function(bar)
