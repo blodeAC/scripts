@@ -198,11 +198,11 @@ local function init()
     end
   end)--]]
   game.Messages.Incoming.Combat_HandleVictimNotificationEventOther.Add(function(e)
+    sleep(300) -- allow for server assigned XP to come in and for monster to death animate
     if game.World.Selected == nil or game.World.Selected.Container ~= nil then
       getNextCombatTarget()
     end
 
-    sleep(300) -- allow for server assigned XP to come in
     if xpRider > 0 then
       xpDispose()
       xp = acclient.DecalD3D.MarkObjectWith3DText(game.Character.Weenie.Id, " +" .. tostring(xpRider) .. " xp", "Arial",
@@ -269,8 +269,10 @@ local function init()
         else
           local trophyBag=game.World.Selected.Id
           game.World.OnObjectSelected.Once(function(f)
-            if game.World.Selected.ObjectClass==ObjectClass.Npc then
+            if game.World.Selected and game.World.Selected.ObjectClass==ObjectClass.Npc then
               handStuffIn(game.World.Selected.Id,trophyBag)
+            else
+              print("NPC not selected")
             end
           end)
         end
