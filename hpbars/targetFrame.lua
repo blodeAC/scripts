@@ -129,7 +129,9 @@ game.World.OnObjectSelected.Add(function(objSelectionEvent)
       lastMob.hpbar.Visible = true
     end
   end
-  if wobjects_hp[objSelectionEvent.ObjectId]~=nil then
+  if not objSelectionEvent then
+    lastMob=nil
+  elseif wobjects_hp[objSelectionEvent.ObjectId]~=nil then
     targetHud.OnPreRender.Add(targetPrerender)
     targetHud.OnRender.Add(targetRender)
     targetHud.Visible = true
