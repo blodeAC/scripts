@@ -46,7 +46,7 @@ local function sortbag(bar, inscription, containerHolder, func)
     for _, bag in ipairs(containerHolder.Containers) do
       game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
         if bag.Id == e.Data.ObjectId then
-          if bag.Value(StringId.Inscription) == inscription then
+          if bag.Value(StringId.Inscription,"") == inscription then
             bar.sortBag = bag.Id
             SaveBarSettings(bar, "sortBag", bag.Id)
           end
@@ -1002,7 +1002,8 @@ bars({
       end
 
       game.World.OnObjectCreated.Add(function(e)
-        if bar.settings.mobToSearch and bar.settings.mobToSearch ~= "" and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.settings.mobToSearch)) then
+        
+        if bar.settings.mobToSearch and bar.settings.mobToSearch ~= "" and game.World.Get(e.ObjectId).ContainerId==0 and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.settings.mobToSearch)) then
           if game.Character.InPortalSpace then
             game.Character.OnPortalSpaceExited.Once(function()
               bar.insertMob(e.ObjectId)
@@ -1130,7 +1131,7 @@ bars({
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
-          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
+          if item.Value(IntId.CurrentWieldedLocation,-1) == EquipMask[bar.name] then
             bar.id = item.Id
             break
           end
@@ -1200,7 +1201,7 @@ bars({
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
-          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
+          if item.Value(IntId.CurrentWieldedLocation,-1) == EquipMask[bar.name] then
             bar.id = item.Id
             break
           end
@@ -1479,7 +1480,7 @@ bars({
               if bar.rememberedSlots[slot] == slottedItem.Id then
                 if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
-                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
+                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations,0) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations,0) then
                       bar.rememberedSlots[eqslot] = nil
                     end
                   end
@@ -1489,7 +1490,7 @@ bars({
               else
                 if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
-                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
+                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations,0) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations,0) then
                       bar.rememberedSlots[eqslot] = slottedItem.Id
                     end
                   end
@@ -1650,7 +1651,7 @@ bars({
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
                   if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                     for i, eqslot in ipairs(bar.equipMask) do
-                      if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
+                      if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations,0) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations,0) then
                         if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id ~= profileEquipment.Id then
                           game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId, 0, false,
                             stagger(count, equipmentActionOpts),
@@ -1661,13 +1662,10 @@ bars({
                     end
                   end
 
-                  game.Actions.ObjectMove(profileEquipment.Id, game.CharacterId, 0, false, stagger(count),
-                    function(objectMove)
-                      if not objectMove.Success and objectMove.Error ~= ActionError.ItemAlreadyWielded then
-                        print("Fail! " .. objectMove.ErrorDetails)
-                      else
-                        game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
-                          genericActionCallback)
+                  game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
+                    function(objectWield)
+                      if not objectWield.Success and objectWield.Error ~= ActionError.ItemAlreadyWielded then
+                        print("Fail! " .. objectWield.ErrorDetails)
                       end
                     end)
                   count = count + 1
@@ -2092,7 +2090,7 @@ bars({
       else
         game.Character.GetFirstInventory("Ust").Use(genericActionOpts, function(res)
           for _, item in ipairs(game.Character.Inventory) do
-            if item.Value(StringId.Inscription)=="Tailoring" then
+            if item.Value(StringId.Inscription,"")=="Tailoring" then
               game.Actions.SalvageAdd(item.Id, genericActionOpts, genericActionCallback)
             end
           end
@@ -2197,7 +2195,7 @@ bars({
       else
         local freeSlots = {}
         for i,pack in ipairs(game.Character.Containers) do
-          if string.len(pack.Value(StringId.Inscription))==0 then
+          if string.len(pack.Value(StringId.Inscription,""))==0 then
             local freeInThisBag = pack.Value(IntId.ItemsCapacity)-#pack.AllItemIds
             if freeInThisBag>0 then
               for j=1,freeInThisBag do
