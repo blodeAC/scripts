@@ -320,6 +320,7 @@ local init = function()
 
   --wipe out text on deselect
   game.World.OnObjectSelected.Add(function(e)
+    if not e then return end
     if lastSelected ~= nil then
       if wobjects_hp[lastSelected] ~= nil then
         wobjects_hp[lastSelected].hpText.Visible = false
