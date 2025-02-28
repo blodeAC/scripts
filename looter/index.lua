@@ -17,12 +17,16 @@ local appraisedItems = setmetatable({}, {
 local buildItem
 local copyAndSort
 
-local function scanInventory()
+local function scanInventory(e)
+  if game.Character.InPortalSpace then
+    game.Character.OnPortalSpaceExited.Once(scanInventory)
+    return
+  end
   for i, invItem in ipairs(game.Character.Inventory) do
     if not invItem.HasAppraisalData then
       if not appraisedItems[invItem.Id] then
         appraisedItems[invItem.Id] = {}
-        game.Actions.ObjectAppraise(invItem.Id)
+        await(game.Actions.ObjectAppraise(invItem.Id))
       end
     elseif appraisedItems[invItem] == nil then
       buildItem(invItem.Id)
