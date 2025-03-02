@@ -1,4 +1,4 @@
-﻿local _imgui = require("imgui")
+local _imgui = require("imgui")
 local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
@@ -35,10 +35,12 @@ function DrawIcon(bar, overrideId, size, func)
 
   if overrideId then
     if ImGui.TextureButton("##" .. bar_position .. overrideId, texture, size) then
-      if func then func() end
+      if func then 
+        game.OnRender2D.Once(func)
+      end
     end
   elseif ImGui.TextureButton("##" .. bar_position, GetOrCreateTexture(bar.settings.icon_hex), size) then
-    bar:func()
+    game.OnRender2D.Once(function() bar:func() end)
   end
   if ImGui.IsItemClicked(1) and bar.rightclick then
     bar:rightclick()
@@ -68,7 +70,6 @@ end
 ---@type string[]
 local availableToImport={}
 local function populateImport()
-
   local files = io.FileExists(settingsFile)
   if files then
     local content = io.ReadText(settingsFile)
@@ -375,7 +376,7 @@ local hudCreate = function(bar)
         if bar.settings.icon_hex then
           DrawIcon(bar)
         elseif ImGui.Button(bar.text and bar:text() or bar.settings.label_str or ("##" .. bar.name), ImGui.GetContentRegionAvail()) then
-          bar:func()
+          game.OnRender2D.Once(function() bar:func() end)
         end
       elseif bar.type == "text" then
         ---@diagnostic disable-next-line
