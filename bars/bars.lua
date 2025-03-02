@@ -25,39 +25,16 @@ equipmentActionOpts.MaxRetryCount = 3
 equipmentActionOpts.TimeoutMilliseconds = 250
 ---@diagnostic enable
 
-
-local function stagger(count, opts)
-  local staggered = ActionOptions.new()
-  if opts then
-    staggered.TimeoutMilliseconds = opts.TimeoutMilliseconds * count
-    staggered.MaxRetryCount = opts.MaxRetryCount
-    staggered.SkipChecks = opts.SkipChecks
-  else
-    staggered.TimeoutMilliseconds = genericActionOpts.TimeoutMilliseconds * count
-    staggered.MaxRetryCount = genericActionOpts.MaxRetryCount
-    staggered.SkipChecks = genericActionOpts.SkipChecks
-  end
-  return staggered
-end
-
 -- FUNCTIONS USED BY BARS
 local function sortbag(bar, inscription, containerHolder, func)
   if bar.sortBag == nil or game.World.Exists(bar.sortBag) == false then
     for _, bag in ipairs(containerHolder.Containers) do
-      game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
-        if bag.Id == e.Data.ObjectId then
-          if bag.Value(StringId.Inscription,"") == inscription then
-            bar.sortBag = bag.Id
-            SaveBarSettings(bar, "sortBag", bag.Id)
-          end
-          ---@diagnostic disable-next-line
-          return true
-        end
-        ---@diagnostic disable-next-line
-        return false
-      end)
-
-      bag.Appraise()
+      await(game.Actions.ObjectAppraise(bag.Id))
+      if bag.Value(StringId.Inscription) == inscription then
+        bar.sortBag = bag.Id
+        SaveBarSettings(bar, "sortBag", bag.Id)
+        return
+      end
     end
   else
     func(bar)
@@ -519,24 +496,16 @@ bars({
     func = function(bar)
       sortbag(bar, "trophies", game.Character,
         function() --left click
-          local count = 1
           local function stash(item)
             if item.ContainerId ~= bar.sortBag and string.find(item.Value(StringId.Use), "A Trophy Collector or Trophy Smith may be interested in this.") then
-              game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, stagger(count), genericActionCallback)
-              count = count + 1
+              await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, true, genericActionOpts, genericActionCallback))
             end
           end
           for i, item in ipairs(game.Character.Inventory) do
-            if item.HasAppraisalData == false and item.ObjectClass == ObjectClass.Misc then
-              game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
-                if item.Id == e.Data.ObjectId then
-                  stash(item)
-                  ---@diagnostic disable-next-line
-                  return true
-                end
-              end)
-              item.Appraise()
-            else
+            if item.ObjectClass == ObjectClass.Misc then
+              if item.HasAppraisalData == false then
+                await(game.Actions.ObjectAppraise(item.Id))
+              end
               stash(item)
             end
           end
@@ -556,12 +525,10 @@ bars({
     },
     func = function(bar)
       sortbag(bar, "salvage", game.Character, function()
-        local count = 1
         for i, item in ipairs(game.Character.Inventory) do
           local salvage = (item.ObjectClass == ObjectClass.Salvage)
           if salvage and item.ContainerId ~= bar.sortBag then
-            game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, stagger(count), genericActionCallback)
-            count = count + 1
+            await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, true, genericActionOpts, genericActionCallback))
           end
         end
       end)
@@ -580,12 +547,10 @@ bars({
     },
     func = function(bar)
       sortbag(bar, "gems", game.Character, function()
-        local count = 1
         for i, item in ipairs(game.Character.Inventory) do
           local gem = (item.ObjectClass == ObjectClass.Gem)
           if gem and item.ContainerId ~= bar.sortBag then
-            game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, stagger(count), genericActionCallback)
-            count = count + 1
+            await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, genericActionOpts, genericActionCallback))
           end
         end
       end)
@@ -604,12 +569,10 @@ bars({
     },
     func = function(bar)
       sortbag(bar, "comps", game.Character, function()
-        local count = 1
         for i, item in ipairs(game.Character.Inventory) do
           local comp = (item.ObjectClass == ObjectClass.SpellComponent) and not string.find(item.Name, "Pea")
           if comp and item.ContainerId ~= bar.sortBag then
-            game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, stagger(count), genericActionCallback)
-            count = count + 1
+            await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, genericActionOpts, genericActionCallback))
           end
         end
       end)
@@ -628,13 +591,11 @@ bars({
     },
     func = function(bar)
       sortbag(bar, "vendor", game.Character, function()
-        local count = 1
         for i, item in ipairs(game.Character.Inventory) do
           local trash = (string.find(item.Name, "Mana Stone") or string.find(item.Name, "Scroll") or string.find(item.Name, "Lockpick")) and
               item.Burden <= 50 and item.Value(IntId.Value) >= 2000
           if trash and item.ContainerId ~= bar.sortBag then
-            game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, stagger(count), genericActionCallback)
-            count = count + 1
+            await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, genericActionOpts, genericActionCallback))
           end
         end
       end)
@@ -670,14 +631,14 @@ bars({
       else
         bar.hud.Visible = false
       end
-      game.Messages.Incoming.Item_OnViewContents.Add(function(e)
-        local container = game.World.Get(e.Data.ObjectId)
+      game.World.OnContainerOpened.Add(function(e)
+        local container = e.Container
         if container and container.Name == "Avaricious Golem" then
           bar.hud.Visible = true
         end
       end)
-      game.Messages.Incoming.Item_StopViewingObjectContents.Add(function(e)
-        local container = game.World.Get(e.Data.ObjectId)
+      game.World.OnContainerClosed.Add(function(e)
+        local container = e.Container
         if container and container.Name == "Avaricious Golem" then
           bar.hud.Visible = false
         end
@@ -689,12 +650,10 @@ bars({
         return
       end
       sortbag(bar, "peas", game.World.OpenContainer.Container, function()
-        local count = 1
         for i, item in ipairs(game.Character.Inventory) do
           local pea = string.find(item.Name, "Pea")
           if pea and item.ObjectClass == ObjectClass.SpellComponent and item.ContainerId ~= bar.sortBag then
-            game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, stagger(count), genericActionCallback)
-            count = count + 1
+            await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, genericActionOpts, genericActionCallback))
           end
         end
       end)
@@ -1131,7 +1090,7 @@ bars({
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
-          if item.Value(IntId.CurrentWieldedLocation,-1) == EquipMask[bar.name] then
+          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
             bar.id = item.Id
             break
           end
@@ -1201,7 +1160,7 @@ bars({
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
-          if item.Value(IntId.CurrentWieldedLocation,-1) == EquipMask[bar.name] then
+          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
             bar.id = item.Id
             break
           end
@@ -1439,7 +1398,6 @@ bars({
             bar:resetRemembered()
           else
             bar.rememberedSlots = profile.gear
-            local count=0
             bar.dontSave = bar.dontSave or bar.shallowcopy(profile.gear)
           end
         end
@@ -1480,7 +1438,7 @@ bars({
               if bar.rememberedSlots[slot] == slottedItem.Id then
                 if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
-                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations,0) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations,0) then
+                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
                       bar.rememberedSlots[eqslot] = nil
                     end
                   end
@@ -1490,7 +1448,7 @@ bars({
               else
                 if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
-                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations,0) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations,0) then
+                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
                       bar.rememberedSlots[eqslot] = slottedItem.Id
                     end
                   end
@@ -1641,7 +1599,6 @@ bars({
         if ImGui.Button(profile.name .. "##profile" .. tostring(_), Vector2.new(windowSize.X, ImGui.GetTextLineHeight()) + miscPadding) then
           bar:scan()
           bar.activeProfile = profile
-          local count = 1
           for slot, gearId in pairs(profile.gear) do
             if gearId ~= slot then
               local profileEquipment = game.World.Get(gearId)
@@ -1651,28 +1608,24 @@ bars({
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
                   if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                     for i, eqslot in ipairs(bar.equipMask) do
-                      if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations,0) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations,0) then
+                      if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
                         if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id ~= profileEquipment.Id then
-                          game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId, 0, false,
-                            stagger(count, equipmentActionOpts),
+                          game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId, 0, false, equipmentActionOpts,
                             genericActionCallback)
-                          count = count + 1
                         end
                       end
                     end
                   end
 
-                  game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
-                    function(objectWield)
-                      if not objectWield.Success and objectWield.Error ~= ActionError.ItemAlreadyWielded then
-                        print("Fail! " .. objectWield.ErrorDetails)
-                      end
-                    end)
-                  count = count + 1
+                  game.Actions.ObjectWield(profileEquipment.Id, slotMask, equipmentActionOpts,
+                   function(objectWield)
+                    if not objectWield.Success and objectWield.Error ~= ActionError.ItemAlreadyWielded then
+                      print("Fail! " .. objectWield.ErrorDetails)
+                    end
+                  end)
                 else
-                  game.Actions.ObjectWield(profileEquipment.Id, slotMask, stagger(count, equipmentActionOpts),
+                  game.Actions.ObjectWield(profileEquipment.Id, slotMask, equipmentActionOpts,
                     genericActionCallback)
-                  count = count + 1
                 end
               else
                 print("Can't find " .. gearId .. " for slot " .. bar.equipMask[slot])
@@ -1680,9 +1633,7 @@ bars({
             else
               local wieldedItem = bar.slots[slot]
               if wieldedItem ~= slot then
-                game.Actions.ObjectMove(wieldedItem.Id, game.CharacterId, 0, false, stagger(count, equipmentActionOpts),
-                  genericActionCallback)
-                count = count + 1
+                game.Actions.ObjectMove(wieldedItem.Id, game.CharacterId, 0, false, equipmentActionOpts, genericActionCallback)
               end
             end
           end
@@ -2090,7 +2041,7 @@ bars({
       else
         game.Character.GetFirstInventory("Ust").Use(genericActionOpts, function(res)
           for _, item in ipairs(game.Character.Inventory) do
-            if item.Value(StringId.Inscription,"")=="Tailoring" then
+            if item.Value(StringId.Inscription)=="Tailoring" then
               game.Actions.SalvageAdd(item.Id, genericActionOpts, genericActionCallback)
             end
           end
@@ -2119,6 +2070,7 @@ bars({
     name = "OneTouchHeal",
     settings = {
       enabled = false,
+      useHotkey = false,
       icon_hex = 0x060032F3,
       fontScale_flt = 2.0,
       hotkey_combo = {87,table.unpack(imguiHotkeys)}
@@ -2133,17 +2085,23 @@ bars({
       end)
     end,
     healfunc = function()
-      local lastBestMod=0
+      local lastBestMod=-1
+      local newBestMod = 0
       local bestKit
       for i,kit in ipairs(game.Character.GetInventory(ObjectClass.HealingKit) or {}) do
-        local newBestMod = kit.Value(FloatId.HealkitMod,0)
+        if pcall(function() 
+          kit.Value(FloatId.HealkitMod)
+          end) then
+            newBestMod = kit.Value(FloatId.HealkitMod)
+        end
         if newBestMod > lastBestMod then
           bestKit = kit
+          lastBestMod = newBestMod
         end
       end
       if bestKit==nil then
         print("No healing kits")
-      else
+      else 
         game.Actions.ObjectUse(bestKit.Id,game.CharacterId,genericActionOpts)
       end
     end,
@@ -2159,9 +2117,9 @@ bars({
       end
 
       DrawIcon(bar,bar.settings.icon_hex,false,bar.healfunc)
-      
-      if ImGui.IsKeyPressed(_imgui.ImGuiKey[bar.settings.hotkey_combo[bar.settings.hotkey_combo[1]+1]], false) then
-        bar.healfunc()
+
+      if bar.settings.useHotkey and ImGui.IsKeyPressed(_imgui.ImGuiKey[bar.settings.hotkey_combo[bar.settings.hotkey_combo[1]+1]], false) then
+        game.OnRender2D.Once(bar.healfunc)
       end
     end
   },{
@@ -2172,44 +2130,23 @@ bars({
       icon_hex = 0x060011F7
     },
     func = function(bar)
-      local appraiseTable={}
       for i,pack in ipairs(game.Character.Containers) do
         if not pack.HasAppraisalData then
-          table.insert(appraiseTable, pack.Id)
-          pack.Appraise()
+          await(game.Actions.ObjectAppraise(pack.Id))
         end
-      end
-      if #appraiseTable>0 then
-        game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
-          for i,packId in ipairs(appraiseTable) do
-            if packId==e.Data.ObjectId then
-              table.remove(appraiseTable,i)
-              if #appraiseTable==0 then
-                bar:func()
-                return true
-              end
+        if string.len(pack.Value(StringId.Inscription))==0 then
+          local freeInThisBag = pack.Value(IntId.ItemsCapacity)-#pack.AllItemIds
+          local toMoveIds={}
+          for _,item in ipairs(game.Character.Inventory) do
+            if item.ContainerId==game.CharacterId then
+              table.insert(toMoveIds,item.Id)
             end
           end
-          return false
-        end)
-      else
-        local freeSlots = {}
-        for i,pack in ipairs(game.Character.Containers) do
-          if string.len(pack.Value(StringId.Inscription,""))==0 then
-            local freeInThisBag = pack.Value(IntId.ItemsCapacity)-#pack.AllItemIds
-            if freeInThisBag>0 then
-              for j=1,freeInThisBag do
-                table.insert(freeSlots,pack.Id)
-              end
+          local maxToMove=math.min(#toMoveIds,freeInThisBag)
+          if maxToMove>0 then
+            for j=1,maxToMove do
+              game.Actions.ObjectMove(toMoveIds[j],pack.Id,0,true)
             end
-          end
-        end
-        local maxToMove=math.min(#game.Character.Weenie.AllItemIds,#freeSlots)
-        local count=1
-        if maxToMove>0 then
-          for i=1,maxToMove do
-            game.Actions.ObjectMove(game.Character.Weenie.AllItemIds[count],table.remove(freeSlots),0,true,stagger(count),genericActionCallback)
-            count=count+1
           end
         end
       end
