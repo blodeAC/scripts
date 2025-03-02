@@ -120,7 +120,7 @@ local init = function()
       wobject.name = weenie.Name
       wobject.objectClass = weenie.ObjectClass
       
-      local heritage = weenie.Value(IntId.HeritageGroup, -1)
+      local heritage = weenie.IntValues[IntId.HeritageGroup] or 0
       wobject.height = 1.1
 
       if (heritage == 8) then                                        -- lugian
@@ -407,7 +407,7 @@ local init = function()
           coords = acclient.Movement.GetPhysicsCoordinates(wobject.id)
         end
         if ((coords and acclient.Coordinates.Me.DistanceTo(coords) > (config.maxDistanceForVisibility or math.huge)) or
-              (game.World.Selected and game.World.Selected.Id == wobject.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp)) then
+              (game.World.Selected ~= nil and game.World.Selected.Id == wobject.id and config.targetHudConfig and config.targetHudConfig.hideSelectionHp)) then
           wobject.hpbar.Visible = false
           wobject.redbar.Visible = false
         elseif wobject.hp ~= 0 then
