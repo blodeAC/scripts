@@ -480,6 +480,7 @@ local function vendorItemsCheck(itemId)
   end
 end
 game.Messages.Incoming.Vendor_VendorInfo.Add(vendorItemsCheck)
+game.Messages.Incoming.Item_SetAppraiseInfo.Add(buildItem)
 
 -----------------------------------------------------
 --- Profile Saving
