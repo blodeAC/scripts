@@ -30,7 +30,7 @@ local function sortbag(bar, inscription, containerHolder, func)
   if bar.sortBag == nil or game.World.Exists(bar.sortBag) == false then
     for _, bag in ipairs(containerHolder.Containers) do
       await(game.Actions.ObjectAppraise(bag.Id))
-      if bag.Value(StringId.Inscription) == inscription then
+      if (bag.StringValues[StringId.Inscription] or "") == inscription then
         bar.sortBag = bag.Id
         SaveBarSettings(bar, "sortBag", bag.Id)
         return
@@ -497,7 +497,7 @@ bars({
       sortbag(bar, "trophies", game.Character,
         function() --left click
           local function stash(item)
-            if item.ContainerId ~= bar.sortBag and string.find(item.Value(StringId.Use), "A Trophy Collector or Trophy Smith may be interested in this.") then
+            if item.ContainerId ~= bar.sortBag and string.find((item.StringValues[StringId.Use] or ""), "A Trophy Collector or Trophy Smith may be interested in this.") then
               await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, true, genericActionOpts, genericActionCallback))
             end
           end
@@ -593,7 +593,7 @@ bars({
       sortbag(bar, "vendor", game.Character, function()
         for i, item in ipairs(game.Character.Inventory) do
           local trash = (string.find(item.Name, "Mana Stone") or string.find(item.Name, "Scroll") or string.find(item.Name, "Lockpick")) and
-              item.Burden <= 50 and item.Value(IntId.Value) >= 2000
+              item.Burden <= 50 and (item.IntValues[IntId.Value] or 0) >= 2000
           if trash and item.ContainerId ~= bar.sortBag then
             await(game.Actions.ObjectMove(item.Id, bar.sortBag, 0, false, genericActionOpts, genericActionCallback))
           end
@@ -1090,7 +1090,7 @@ bars({
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
-          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
+          if (item.IntValues[IntId.CurrentWieldedLocation] or 0) == EquipMask[bar.name] then
             bar.id = item.Id
             break
           end
@@ -1106,7 +1106,7 @@ bars({
       game.Messages.Incoming.Qualities_UpdateInstanceID.Add(function(updateInstance)
         local objectId = updateInstance.Data.ObjectId
         local weenie = game.World.Get(objectId)
-        if not weenie or weenie.Value(IntId.ValidLocations) ~= EquipMask[bar.name] then
+        if not weenie or (weenie.IntValues[IntId.ValidLocations] or 0) ~= EquipMask[bar.name] then
           return
         elseif updateInstance.Data.Key == InstanceId.Container and updateInstance.Data.Value == game.CharacterId then
           sleep(333)
@@ -1129,13 +1129,13 @@ bars({
           end
         end
         local aetheria = game.World.Get(bar.id)
-        local underlay = aetheria.Value(DataId.IconUnderlay)
+        local underlay = (aetheria.DataValues[DataId.IconUnderlay] or 0)
         if underlay ~= 0 then
           local cursorPos = ImGui.GetCursorScreenPos()
           DrawIcon(bar, underlay)
           ImGui.SetCursorScreenPos(cursorPos)
         end
-        local icon = aetheria.Value(DataId.Icon)
+        local icon = (aetheria.DataValues[DataId.Icon] or 0)
         DrawIcon(bar, icon)
       else
         if not DrawIcon(bar, 0x06006C0A) then
@@ -1160,7 +1160,7 @@ bars({
       local function scan()
         for _, item in ipairs(game.Character.Equipment) do
           bar.id = nil
-          if item.Value(IntId.CurrentWieldedLocation) == EquipMask[bar.name] then
+          if (item.IntValues[IntId.CurrentWieldedLocation] or 0) == EquipMask[bar.name] then
             bar.id = item.Id
             break
           end
@@ -1175,7 +1175,7 @@ bars({
       game.Messages.Incoming.Qualities_UpdateInstanceID.Add(function(updateInstance)
         local objectId = updateInstance.Data.ObjectId
         local weenie = game.World.Get(objectId)
-        if not weenie or weenie.Value(IntId.ValidLocations) ~= EquipMask[bar.name] then
+        if not weenie or (weenie.IntValues[IntId.ValidLocations] or 0) ~= EquipMask[bar.name] then
           return
         elseif updateInstance.Data.Key == InstanceId.Container and updateInstance.Data.Value == game.CharacterId then
           sleep(333)
@@ -1198,13 +1198,13 @@ bars({
           end
         end
         local aetheria = game.World.Get(bar.id)
-        local underlay = aetheria.Value(DataId.IconUnderlay)
+        local underlay = (aetheria.DataValues[DataId.IconUnderlay] or 0)
         if underlay ~= 0 then
           local cursorPos = ImGui.GetCursorScreenPos()
           DrawIcon(bar, underlay)
           ImGui.SetCursorScreenPos(cursorPos)
         end
-        local icon = aetheria.Value(DataId.Icon)
+        local icon = (aetheria.DataValues[DataId.Icon] or 0)
         DrawIcon(bar, icon)
       else
         DrawIcon(bar, 0x06006C0A)
@@ -1246,7 +1246,7 @@ bars({
 
       ---@param wo WorldObject
       bar.GetItemTypeUnderlay = function(wo)
-        local underlay = wo.Value(DataId.IconUnderlay)
+        local underlay = (wo.DataValues[DataId.IconUnderlay] or 0)
         if underlay ~= 0 then
           return underlay
         elseif wo.ObjectType == ObjectType.MeleeWeapon then
@@ -1264,7 +1264,7 @@ bars({
         elseif wo.ObjectType == ObjectType.Gem then
           return 0x060011D3
         elseif wo.ObjectType == ObjectType.Jewelry then
-          if wo.Value(IntId.SharedCooldown) > 0 then
+          if (wo.IntValues[IntId.SharedCooldown] or 0) > 0 then
             return 0x060011CF
           end
           return 0x060011D5
@@ -1438,7 +1438,7 @@ bars({
               if bar.rememberedSlots[slot] == slottedItem.Id then
                 if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
-                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
+                    if eqslot ~= "None" and (slottedItem.IntValues[IntId.ValidLocations] or 0) + EquipMask[eqslot] == (slottedItem.IntValues[IntId.ValidLocations] or 0) then
                       bar.rememberedSlots[eqslot] = nil
                     end
                   end
@@ -1448,7 +1448,7 @@ bars({
               else
                 if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                   for i, eqslot in ipairs(bar.equipMask) do
-                    if eqslot ~= "None" and slottedItem.Value(IntId.ValidLocations) + EquipMask[eqslot] == slottedItem.Value(IntId.ValidLocations) then
+                    if eqslot ~= "None" and (slottedItem.IntValues[IntId.ValidLocations] or 0) + EquipMask[eqslot] == (slottedItem.IntValues[IntId.ValidLocations] or 0) then
                       bar.rememberedSlots[eqslot] = slottedItem.Id
                     end
                   end
@@ -1458,7 +1458,7 @@ bars({
               end
             end)
             ImGui.SetCursorScreenPos(start)
-            DrawIcon(bar, bar.slots[slot].Value(DataId.Icon), cellSize)
+            DrawIcon(bar, (bar.slots[slot].DataValues[DataId.Icon] or 0), cellSize)
             if bar.rememberedSlots[slot] == slottedItem.Id then
               drawlist.AddRectFilled(start, start + cellSize, 0x8800FF00)
             elseif (bar.rememberedSlots[slot] and slottedItem.Id ~= bar.rememberedSlots[slot]) or
@@ -1608,7 +1608,7 @@ bars({
                 if wieldedItem ~= nil and wieldedItem.Id ~= profileEquipment.Id then
                   if not (string.find(slot, "Ring") or string.find(slot, "Bracelet") or string.find(slot, "Weapon") or string.find(slot, "Shield")) then
                     for i, eqslot in ipairs(bar.equipMask) do
-                      if eqslot ~= "None" and profileEquipment.Value(IntId.ValidLocations) + EquipMask[eqslot] == profileEquipment.Value(IntId.ValidLocations) then
+                      if eqslot ~= "None" and (profileEquipment.IntValues[IntId.ValidLocations] or 0) + EquipMask[eqslot] == (profileEquipment.IntValues[IntId.ValidLocations] or 0) then
                         if bar.slots[eqslot] ~= eqslot and bar.slots[eqslot].Id ~= profileEquipment.Id then
                           game.Actions.ObjectMove(bar.slots[eqslot].Id, game.CharacterId, 0, false, equipmentActionOpts,
                             genericActionCallback)
@@ -1834,7 +1834,7 @@ bars({
                 local caster = game.World.Get(buffOrDebuff.casterId)
                 ImGui.Text("Granted by\n" .. caster.Name)
                 ImGui.TextureButton("##" .. buffOrDebuff.Id - buffOrDebuff.casterId,
-                  GetOrCreateTexture(caster.Value(DataId.Icon)), iconSize)
+                  GetOrCreateTexture((caster.DataValues[DataId.Icon] or 0)), iconSize)
                 ImGui.EndTooltip()
               end
             end
@@ -2039,30 +2039,29 @@ bars({
         print("No UST!")
         return
       else
-        game.Character.GetFirstInventory("Ust").Use(genericActionOpts, function(res)
-          for _, item in ipairs(game.Character.Inventory) do
-            if item.Value(StringId.Inscription)=="Tailoring" then
-              game.Actions.SalvageAdd(item.Id, genericActionOpts, genericActionCallback)
-            end
+        game.Character.GetFirstInventory("Ust").Use(genericActionOpts)
+        for _, item in ipairs(game.Character.Inventory) do
+          if "Tailoring" == (item.StringValues[StringId.Inscription] or "") then
+            game.Actions.SalvageAdd(item.Id, genericActionOpts, genericActionCallback)
           end
+        end
 
-          for _, exBar in ipairs(bars) do
-            if exBar.name == "sort_salvagebag" and exBar.sortBag then
-              for _, itemId in ipairs(game.World.Get(exBar.sortBag).AllItemIds) do
-                game.Actions.SalvageAdd(itemId, genericActionOpts, genericActionCallback)
-              end
-              break
+        for _, exBar in ipairs(bars) do
+          if exBar.name == "sort_salvagebag" and exBar.sortBag then
+            for _, itemId in ipairs(game.World.Get(exBar.sortBag).AllItemIds) do
+              game.Actions.SalvageAdd(itemId, genericActionOpts, genericActionCallback)
             end
+            break
           end
+        end
 
-          local opts = ActionOptions.new()
-          opts.SkipChecks = true
-          ---@diagnostic disable-next-line
-          opts.TimeoutMilliseconds = 100
-          ---@diagnostic disable-next-line
-          opts.MaxRetryCount = 0
-          game.Actions.Salvage(opts, genericActionCallback)
-        end)
+        local opts = ActionOptions.new()
+        opts.SkipChecks = true
+        ---@diagnostic disable-next-line
+        opts.TimeoutMilliseconds = 100
+        ---@diagnostic disable-next-line
+        opts.MaxRetryCount = 0
+        game.Actions.Salvage(opts, genericActionCallback)
       end
     end,
   },
@@ -2089,11 +2088,7 @@ bars({
       local newBestMod = 0
       local bestKit
       for i,kit in ipairs(game.Character.GetInventory(ObjectClass.HealingKit) or {}) do
-        if pcall(function() 
-          kit.Value(FloatId.HealkitMod)
-          end) then
-            newBestMod = kit.Value(FloatId.HealkitMod)
-        end
+        newBestMod = (kit.FloatValues[FloatId.HealkitMod] or 0.0)
         if newBestMod > lastBestMod then
           bestKit = kit
           lastBestMod = newBestMod
@@ -2134,8 +2129,8 @@ bars({
         if not pack.HasAppraisalData then
           await(game.Actions.ObjectAppraise(pack.Id))
         end
-        if string.len(pack.Value(StringId.Inscription))==0 then
-          local freeInThisBag = pack.Value(IntId.ItemsCapacity)-#pack.AllItemIds
+        if string.len((pack.StringValues[StringId.Inscription] or ""))==0 then
+          local freeInThisBag = (pack.IntValues[IntId.ItemsCapacity] or 0)-#pack.AllItemIds
           local toMoveIds={}
           for _,item in ipairs(game.Character.Inventory) do
             if item.ContainerId==game.CharacterId then
