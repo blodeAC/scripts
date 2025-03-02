@@ -3,6 +3,7 @@ local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local acclient = require("acclient")
 local targetHudConfig = config.targetHudConfig
+local lastMob
 
 -------------------------------------------------
 --- IMGUI for TARGETHUD
@@ -57,7 +58,7 @@ end
 -- Render directly into the parent HUD window using BeginChild to anchor progress bars.
 local targetRender
 targetRender = function()
-  if not target or not game.World.Selected or target.id ~= game.World.Selected.Id then
+  if not game.World.Selected or lastMob.id ~= game.World.Selected.Id then
     ImGui.PopStyleVar(5)
     targetHud.OnPreRender.Remove(targetPrerender)
     targetHud.OnRender.Remove(targetRender)
@@ -79,12 +80,12 @@ targetRender = function()
     -- Render the progress bar inside the HUD without default text.
     local progressBarSize = Vector2.new(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y)
     --print(progressBarSize)
-    local progressFraction = target.hp / 1 
+    local progressFraction = lastMob.hp / 1 
     local progressBarStartPos = ImGui.GetCursorScreenPos()   -- Save the starting position of the progress bar
     ImGui.ProgressBar(progressFraction, progressBarSize, "") -- Render bar without default text
 
     -- Calculate and render custom text based on alignment setting
-    targetHudConfig.text(progressBarStartPos,progressBarSize)
+    targetHudConfig.text(lastMob,progressBarStartPos,progressBarSize)
 
     ImGui.PopStyleColor() -- Ensure this matches PushStyleColor()
     
@@ -117,7 +118,6 @@ targetRender = function()
   ImGui.PopStyleVar(5) --WindowMinSize,WindowPadding,FramePadding,ItemSpacing,ItemInnerSpacing
 end
 
-local lastMob
 game.World.OnObjectSelected.Add(function(objSelectionEvent)
   targetHud.OnPreRender.Remove(targetPrerender)
   targetHud.OnRender.Remove(targetRender)
@@ -132,13 +132,13 @@ game.World.OnObjectSelected.Add(function(objSelectionEvent)
   if not objSelectionEvent then
     lastMob=nil
   elseif wobjects_hp[objSelectionEvent.ObjectId]~=nil then
+    local target=wobjects_hp[objSelectionEvent.ObjectId]
     targetHud.OnPreRender.Add(targetPrerender)
     targetHud.OnRender.Add(targetRender)
     targetHud.Visible = true
-    target=wobjects_hp[objSelectionEvent.ObjectId]
 
+    lastMob=wobjects_hp[objSelectionEvent.ObjectId]
     if targetHudConfig.hideSelectionHp then
-      lastMob=wobjects_hp[objSelectionEvent.ObjectId]
       target.hpText.Visible=false
       target.redbar.Visible=false
       target.hpbar.Visible=false
