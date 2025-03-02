@@ -24,15 +24,12 @@ local function scanInventory(e)
   end
   for i, invItem in ipairs(game.Character.Inventory) do
     if not invItem.HasAppraisalData then
-      if not appraisedItems[invItem.Id] then
-        appraisedItems[invItem.Id] = {}
-        await(game.Actions.ObjectAppraise(invItem.Id))
-      end
-    elseif appraisedItems[invItem] == nil then
-      buildItem(invItem.Id)
+      await(game.Actions.ObjectAppraise(invItem.Id))
     end
+    buildItem(invItem.Id)
   end
 end
+
 
 -----------------------------------------------------
 --- helpers
@@ -328,9 +325,10 @@ local function loot(itemData, winningLootRule, weenie)
   game.Actions.ObjectMove(itemData.id, game.CharacterId, 0, true, lootActionOptions,
     function(objectMoveAction)
       if objectMoveAction.Success then
-        if weenie.Value(BoolId.Inscribable) then
+        if weenie.BoolValues[BoolId.Inscribable]==true then
           weenie.Inscribe(winningLootRule.name, lootActionOptions, function()
-            game.Actions.ObjectAppraise(weenie.Id)
+            await(game.Actions.ObjectAppraise(weenie.Id))
+            buildItem(weenie.Id)
           end)
         end
         winningLootRule.totalFound = (winningLootRule.totalFound or 0) + 1
@@ -416,7 +414,6 @@ buildItem = function(e)
   end
   processItem(itemData)
 end
-game.Messages.Incoming.Item_SetAppraiseInfo.Add(buildItem)
 
 local container = {}
 game.World.OnContainerOpened.Add(function(containerMsg)
@@ -443,13 +440,14 @@ game.World.OnContainerOpened.Add(function(containerMsg)
     end
 
     for i, itemid in ipairs(container[containerId]) do
+      table.insert(inspectQueue, itemid)
       if appraisedItems[itemid] ~= nil then
-        table.insert(inspectQueue, itemid)
         processItem(appraisedItems[itemid])
       else
-        table.insert(inspectQueue, itemid)
-        game.Actions.ObjectAppraise(itemid)
+        await(game.Actions.ObjectAppraise(itemid))
+        buildItem(itemid)
       end
+      processItem(appraisedItems[itemid])
     end
   end
 end)
@@ -464,22 +462,12 @@ local function vendorItemsCheck(itemId)
       for i, v in ipairs(game.World.Vendor.Items) do
         local weenie = game.World.Get(v.ObjectID)
         if not weenie.HasAppraisalData then
-          game.Actions.ObjectAppraise(v.ObjectID)
-          game.Messages.Incoming.Item_SetAppraiseInfo.Until(function(e)
-            if e.Data.ObjectId == weenie.Id then
-              sleep(10)
-              vendorItemsCheck(v.ObjectID)
-              return true
-            end
-          end)
-        else
-          if not appraisedItems[v.ObjectID] then
-            buildItem(v.ObjectID)
-          end
-          local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
-          if winningLootRule then
-            print("\"" .. weenie.Name .. "\" wanted by " .. winningLootRule.name)
-          end
+          await(game.Actions.ObjectAppraise(v.ObjectID))
+        end
+        buildItem(v.ObjectID)
+        local winningLootRule = evaluateLoot(appraisedItems[v.ObjectID])
+        if winningLootRule then
+          print("\"" .. weenie.Name .. "\" wanted by " .. winningLootRule.name)
         end
       end
     else
