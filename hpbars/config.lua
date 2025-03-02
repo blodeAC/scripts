@@ -18,19 +18,19 @@ config = {
     textAlignment = "center",
     ---@param progressBarStartPos Vector2
     ---@param progressBarSize Vector2
-    text = function(progressBarStartPos,progressBarSize)
+    text = function(lastMob,progressBarStartPos,progressBarSize)
       local blankLine= " "
       local centeredText={
-        target.name,
+        game.World.Selected.Name,
         blankLine
       }
       local rightText={
         blankLine,
-        target.maxHp and ((tostring(math.floor(target.hp*target.maxHp+0.5)) .. " / " .. tostring(target.maxHp)) .. " ") or (tostring(math.floor(target.hp*100)) .. "%%")
+        lastMob.maxHp and ((tostring(math.floor(lastMob.hp*lastMob.maxHp+0.5)) .. " / " .. tostring(lastMob.maxHp)) .. " ") or (tostring(math.floor(lastMob.hp*100)) .. "%%")
       }
       local leftText={
         blankLine,
-        tostring(game.World.Get(target.id).Value(IntId.Level))~="0" and ("  "..tostring(game.World.Get(target.id).Value(IntId.Level))) or "  ??"
+        tostring(game.World.Selected.Value(IntId.Level))~="0" and ("  "..tostring(game.World.Selected.Value(IntId.Level))) or "  ??"
       }
       for i,text in ipairs(leftText) do
         local textSize=ImGui.CalcTextSize(text)
