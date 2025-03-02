@@ -122,16 +122,14 @@ local function init()
   end
 
   -- Watches for corpses to spawn.
-  game.World.OnObjectCreated.Add(function(e)
-    local corpse = game.World.Get(e.ObjectId)
-    if not corpse or corpse.ObjectClass ~= ObjectClass.Corpse then return end
-
-    game.Actions.ObjectAppraise(e.ObjectId, ActionOptions.new(), function(res)
-      if (corpse.Value(StringId.LongDesc) == "Killed by " .. game.Character.Weenie.Name .. ".") then
-        addCorpse(e.ObjectId)
-        corpse.OnDestroyed.Once(function(evt) removeCorpse(e.ObjectId) end)
-      end
-    end)
+  game.World.OnObjectCreated.Add(function(obj)
+    local corpse = game.World.Get(obj.ObjectId)
+    if corpse==nil or corpse.ObjectClass ~= ObjectClass.Corpse then return end
+    await(game.Actions.ObjectAppraise(obj.ObjectId))
+    if ((corpse.StringValues[StringId.LongDesc] or "")== "Killed by " .. game.Character.Weenie.Name .. ".") then
+      addCorpse(corpse.Id)
+      corpse.OnDestroyed.Once(function(evt) removeCorpse(corpse.Id) end)
+    end
   end)
 
   -- Watches for corpses to be opened.
@@ -235,7 +233,7 @@ local function init()
             local newPyreal=game.World.Get(createdObjectEvent.Data.ObjectId)
             local moneys=game.Character.GetInventory(ObjectClass.Money)
             for _,money in ipairs(moneys) do
-              if money.Id~=newPyreal.Id and money.Name=="Pyreal" and (money.Value(IntId.StackSize)+newPyreal.Value(IntId.StackSize)<=money.Value(IntId.MaxStackSize)) then
+              if money.Id~=newPyreal.Id and money.Name=="Pyreal" and ((money.IntValues[IntId.StackSize] or 1)+(newPyreal.IntValues[IntId.StackSize] or 1)<=(money.IntValues[IntId.MaxStackSize] or 1)) then
                 newPyreal.Move(money.ContainerId,0,true)
                 break
               end
