@@ -633,7 +633,7 @@ bars({
       end
       game.World.OnContainerOpened.Add(function(e)
         local container = e.Container
-        if container and container.Name == "Avaricious Golem" then
+        if container.Name == "Avaricious Golem" then
           bar.hud.Visible = true
         end
       end)
@@ -838,10 +838,17 @@ bars({
           Coordinates = acclient.Movement.GetPhysicsCoordinates(weenie.Id)
         }
 
-        for i,mob in ipairs(bar.currentMobs) do
-          if newMob.Distance()<mob.Distance() then
-            table.insert(bar.currentMobs, newMob[i])
-            break
+        if #bar.currentMobs==0 then
+          table.insert(bar.currentMobs, newMob)
+        else
+          for i,mob in ipairs(bar.currentMobs) do
+            if newMob.Distance()<mob.Distance() then
+              table.insert(bar.currentMobs, i, newMob)
+              if i<=bar.mobIndex then
+                bar.mobIndex=bar.mobIndex+1
+              end
+              break
+            end
           end
         end
       end
@@ -961,14 +968,12 @@ bars({
       end
 
       game.World.OnObjectCreated.Add(function(e)
-        
-        if bar.settings.mobToSearch and bar.settings.mobToSearch ~= "" and game.World.Get(e.ObjectId).ContainerId==0 and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.settings.mobToSearch)) then
+        if bar.settings.mobToSearch ~= "" and game.World.Get(e.ObjectId).Container==nil and string.find(string.lower(game.World.Get(e.ObjectId).Name), string.lower(bar.settings.mobToSearch)) then
           if game.Character.InPortalSpace then
             game.Character.OnPortalSpaceExited.Once(function()
               bar.insertMob(e.ObjectId)
             end)
           else
-            sleep(333)
             bar.insertMob(e.ObjectId)
           end
         end
@@ -979,7 +984,6 @@ bars({
       end)
 
       game.World.OnObjectReleased.Add(function(e)
-        ---@diagnostic disable-next-line
         bar.removeMob(e.ObjectId)
       end)
       game.Character.Weenie.OnPositionChanged.Add(function(e)
@@ -998,8 +1002,13 @@ bars({
           end
         end
       end)
-
-      bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
+      if game.Character.InPortalSpace then
+        game.Character.OnPortalSpaceExited.Once(function()
+          bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
+        end)
+      else
+        bar.currentMobs = bar.findMobByName(bar.settings.mobToSearch)
+      end
     end,
 
     render = function(bar)
@@ -2039,7 +2048,7 @@ bars({
         print("No UST!")
         return
       else
-        game.Character.GetFirstInventory("Ust").Use(genericActionOpts)
+        await(game.Character.GetFirstInventory("Ust").Use(genericActionOpts))
         for _, item in ipairs(game.Character.Inventory) do
           if "Tailoring" == (item.StringValues[StringId.Inscription] or "") then
             game.Actions.SalvageAdd(item.Id, genericActionOpts, genericActionCallback)
