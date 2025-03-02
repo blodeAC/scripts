@@ -30,7 +30,7 @@ config = {
       }
       local leftText={
         blankLine,
-        tostring(game.World.Selected.Value(IntId.Level))~="0" and ("  "..tostring(game.World.Selected.Value(IntId.Level))) or "  ??"
+        tostring(game.World.Selected.IntValues[IntId.Level])~="0" and ("  "..tostring(game.World.Selected.IntValues[IntId.Level])) or "  ??"
       }
       for i,text in ipairs(leftText) do
         local textSize=ImGui.CalcTextSize(text)
