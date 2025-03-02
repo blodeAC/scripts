@@ -829,12 +829,23 @@ bars({
         return matchingMobs
       end
 
-      bar.insertMob = function(newMobId)
+      bar.insertMob = function(newMobId, attempt)
+        bar.removeMob(newMobId)
+        sleep(1000) -- fuck my life. cannot figure out another way to delay until object has real position
         local weenie = game.World.Get(newMobId)
+        if not weenie then
+          attempt = attempt and attempt+1 or 2
+          if attempt and attempt<=3 then
+            game.OnTick.Once(function()
+              bar.insertMob(newMobId,attempt)
+            end)
+          end
+          return
+        end
         local newMob = {
           Id = weenie.Id,
           Name = weenie.Name,
-          Distance = function() return acclient.Coordinates.Me.DistanceTo(acclient.Movement.GetPhysicsCoordinates(weenie.Id)) end,
+          Distance = function() return game.Character.Weenie.DistanceTo3D(weenie) end,
           Coordinates = acclient.Movement.GetPhysicsCoordinates(weenie.Id)
         }
 
@@ -907,7 +918,7 @@ bars({
         -- Create an invisible button over the arrow area
         ImGui.SetCursorScreenPos(Vector2.new(minX, minY))
         ImGui.InvisibleButton("ArrowClick", Vector2.new(maxX - minX, maxY - minY))
-
+        
         if ImGui.IsItemClicked() then
             game.Actions.ObjectSelect(currentMob.Id)
             --print("Arrow clicked! Target mob ID: " .. currentMob.Id)
