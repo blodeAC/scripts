@@ -10,7 +10,9 @@ local genericActionOpts = ActionOptions.new()
 ---@diagnostic disable
 genericActionOpts.MaxRetryCount = 0
 genericActionOpts.TimeoutMilliseconds = 100
+genericActionOpts.SkipChecks = true
 ---@diagnostic enable
+
 local genericActionCallback = function(e)
   if not e.Success then
     if e.Error ~= ActionError.ItemAlreadyWielded then
