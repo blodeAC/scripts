@@ -3,12 +3,43 @@ local ImGui = _imgui.ImGui
 local views = require("utilitybelt.views")
 local io = require("filesystem").GetScript()
 local settingsFile = "bar_settings.json"
-local bars = require("bars")
+local common = require("bar_common")
+
+local bars = setmetatable({}, {
+  __newindex = function(t, k, v)
+    if type(v) == "table" and v.name then
+      rawset(t, v.name, v)
+    end
+    rawset(t, k, v)
+  end,
+  __call = function(t, initialValues)
+    for _, v in ipairs(initialValues) do
+      table.insert(t, v)
+    end
+  end
+})
+
+local files, err = io.GetFiles("bars")
+if err then
+  print("Error loading bars: " .. err)
+else
+  for _, filename in ipairs(files) do
+    if filename:match("%.lua$") then
+      local modname = "bars/" .. filename:gsub("%.lua$", "")
+      local ok, result = pcall(require, modname)
+      if ok then
+        table.insert(bars, result)
+      else
+        print("Failed to load bar " .. filename .. ": " .. tostring(result))
+      end
+    end
+  end
+end
+
 
 ---------------------------------------
 --- icons
 ---------------------------------------
-
 local textures = {}
 
 ---Get or create a managed texture for a world object
